@@ -6,7 +6,7 @@ plugins {
 
 // Para publicar una versión nueva solo se cambia este número. El versionCode sale de él,
 // así cada versión es mayor que la anterior y Android la instala encima sin desinstalar.
-val appVersion = "0.2.0"
+val appVersion = "0.3.0"
 val (versionMajor, versionMinor, versionPatch) = appVersion.split(".").map { it.toInt() }
 
 android {
@@ -70,5 +70,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }

@@ -26,8 +26,13 @@ class SettingsColleagueTest {
 
     @Test
     fun `empieza con lo guardado`() {
-        val store = FakeSettingsStore(AppSettings(ThemeMode.DARK, Accent.ROSA, true))
-        assertEquals(AppSettings(ThemeMode.DARK, Accent.ROSA, true), SettingsColleague(store).state.value)
+        val store = FakeSettingsStore(AppSettings(ThemeMode.LIGHT, Accent.ROSA))
+        assertEquals(AppSettings(ThemeMode.LIGHT, Accent.ROSA), SettingsColleague(store).state.value)
+    }
+
+    @Test
+    fun `por defecto el tema es oscuro`() {
+        assertEquals(ThemeMode.DARK, AppSettings().mode)
     }
 
     @Test
@@ -36,14 +41,13 @@ class SettingsColleagueTest {
         val settings = SettingsColleague(store)
         val mediator = EventMediator(mediatorScope(), listOf(settings))
 
-        mediator.post(AppEvent.SetThemeMode(ThemeMode.DARK))
+        mediator.post(AppEvent.SetThemeMode(ThemeMode.LIGHT))
         mediator.post(AppEvent.SetAccent(Accent.VERDE))
-        mediator.post(AppEvent.SetAmoled(true))
         advanceUntilIdle()
 
-        assertEquals(AppSettings(ThemeMode.DARK, Accent.VERDE, true), settings.state.value)
+        assertEquals(AppSettings(ThemeMode.LIGHT, Accent.VERDE), settings.state.value)
         assertEquals(settings.state.value, store.stored)
-        assertEquals(3, store.saves)
+        assertEquals(2, store.saves)
     }
 
     @Test
@@ -52,7 +56,7 @@ class SettingsColleagueTest {
         val settings = SettingsColleague(store)
         val mediator = EventMediator(mediatorScope(), listOf(settings))
 
-        mediator.post(AppEvent.SetThemeMode(ThemeMode.SYSTEM))
+        mediator.post(AppEvent.SetThemeMode(ThemeMode.DARK))
         mediator.post(AppEvent.SetAccent(Accent.VIOLETA))
         advanceUntilIdle()
 

@@ -71,6 +71,7 @@ fun SongRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -101,7 +102,10 @@ fun SongRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (track.durationMs > 0) {
+        if (trailing != null) {
+            Spacer(Modifier.width(4.dp))
+            trailing()
+        } else if (track.durationMs > 0) {
             Spacer(Modifier.width(8.dp))
             Text(
                 text = formatTime(track.durationMs),

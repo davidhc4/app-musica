@@ -7,16 +7,18 @@ Reproductor de música para Android pensado para funcionar sin conexión: tu mú
 Ya puedes:
 
 - Agregar canciones de tu celular a una biblioteca que se guarda entre sesiones
-- Buscar por canción, artista o álbum
+- Buscar música en línea (Audius) y escucharla al instante, sin tenerla en el celular; guardar las que te gusten en tu biblioteca
+- Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
-- Cambiar entre tema claro, oscuro o el del sistema, elegir color de acento y usar fondo negro puro
+- Cambiar entre tema claro y oscuro, y elegir el color de acento
 
 La carátula sale del propio archivo; si no trae ninguna, la app dibuja una portada con colores propios.
 
 Pendiente:
 
 - Reproducción con la pantalla apagada
-- Descarga de música libre y legal (Jamendo, Internet Archive, Free Music Archive)
+- Descargar la música en línea para escucharla sin internet
+- Más fuentes de música libre y legal (Jamendo, Internet Archive)
 - Listas de reproducción, aleatorio y repetir
 
 ## Instalar
@@ -32,7 +34,10 @@ app/src/main/java/com/davidhc4/musica/
 ├── core/      mediador, eventos y ajustes
 ├── queue/     cola de reproducción
 ├── player/    motor de audio
-├── library/   biblioteca guardada y búsqueda
+├── library/   biblioteca guardada y búsqueda local
+├── search/    búsqueda en línea
+├── source/    fuentes de música en línea
+├── net/       descargas simples por internet
 ├── settings/  tema y personalización
 └── ui/        pantallas y componentes
 ```

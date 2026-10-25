@@ -25,39 +25,59 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import com.davidhc4.musica.core.Track
+import com.davidhc4.musica.net.httpGetBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Saca la carátula incrustada en el archivo de audio y guarda las usadas hace poco. */
+/** Obtiene la carátula (incrustada en el archivo o descargada) y guarda las usadas hace poco. */
 class ArtworkLoader(private val context: Context) {
 
     private val cache = LruCache<String, Bitmap>(40)
     private val withoutArtwork = HashSet<String>()
 
-    suspend fun load(uri: String): ImageBitmap? {
-        cache.get(uri)?.let { return it.asImageBitmap() }
-        if (uri in withoutArtwork) return null
-        val bitmap = withContext(Dispatchers.IO) { decode(uri) }
-        if (bitmap == null) withoutArtwork.add(uri) else cache.put(uri, bitmap)
+    suspend fun load(track: Track): ImageBitmap? {
+        val key = track.artworkUrl ?: track.uri
+        cache.get(key)?.let { return it.asImageBitmap() }
+        if (key in withoutArtwork) return null
+
+        val remote = track.artworkUrl != null
+        val bitmap = withContext(Dispatchers.IO) {
+            try {
+                if (remote) decodeBytes(httpGetBytes(track.artworkUrl!!)) else decodeEmbedded(track.uri)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        if (bitmap != null) {
+            cache.put(key, bitmap)
+        } else if (!remote) {
+            // Una descarga fallida puede ser pasajera (sin señal), así que solo se recuerda lo local.
+            withoutArtwork.add(key)
+        }
         return bitmap?.asImageBitmap()
     }
 
-    private fun decode(uri: String): Bitmap? {
+    private fun decodeEmbedded(uri: String): Bitmap? {
+        val parsed = Uri.parse(uri)
+        if (parsed.scheme != "content" && parsed.scheme != "file") return null
         val retriever = MediaMetadataRetriever()
         return try {
-            retriever.setDataSource(context, Uri.parse(uri))
-            val bytes = retriever.embeddedPicture ?: return null
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            var sample = 1
-            while (bounds.outWidth / sample > 1000) sample *= 2
-            val options = BitmapFactory.Options().apply { inSampleSize = sample }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            retriever.setDataSource(context, parsed)
+            retriever.embeddedPicture?.let { decodeBytes(it) }
         } catch (_: Exception) {
             null
         } finally {
             retriever.release()
         }
+    }
+
+    private fun decodeBytes(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (bounds.outWidth / sample > 1000) sample *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
 }
 
@@ -72,8 +92,8 @@ fun TrackArtwork(
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val bitmap by produceState<ImageBitmap?>(null, track?.uri) {
-        value = track?.let { loader.load(it.uri) }
+    val bitmap by produceState<ImageBitmap?>(null, track?.id) {
+        value = track?.let { loader.load(it) }
     }
     Box(modifier.clip(RoundedCornerShape(cornerRadius))) {
         val image = bitmap

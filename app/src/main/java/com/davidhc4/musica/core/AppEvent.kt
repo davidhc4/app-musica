@@ -7,6 +7,7 @@ data class Track(
     val uri: String,
     val album: String? = null,
     val durationMs: Long = 0L,
+    val artworkUrl: String? = null,
 )
 
 /**
@@ -32,10 +33,12 @@ sealed interface AppEvent {
     data class AddToLibrary(val tracks: List<Track>) : AppEvent
     data class RemoveFromLibrary(val trackId: String) : AppEvent
 
+    // Búsqueda en línea
+    data class SearchRequested(val query: String) : AppEvent
+
     // Apariencia
     data class SetThemeMode(val mode: ThemeMode) : AppEvent
     data class SetAccent(val accent: Accent) : AppEvent
-    data class SetAmoled(val enabled: Boolean) : AppEvent
 
     // Avisos (los publican los componentes)
     data class CurrentTrackChanged(val track: Track?) : AppEvent

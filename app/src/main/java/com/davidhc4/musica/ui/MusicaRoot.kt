@@ -64,6 +64,7 @@ fun MusicaRoot(app: MusicaApp) {
     val queue by app.queue.state.collectAsState()
     val player by app.player.state.collectAsState()
     val settings by app.settings.state.collectAsState()
+    val search by app.search.state.collectAsState()
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -105,9 +106,12 @@ fun MusicaRoot(app: MusicaApp) {
 
                     1 -> SearchScreen(
                         library = library.tracks,
+                        search = search,
                         currentId = currentTrack?.id,
                         artwork = app.artwork,
+                        onQueryChange = { app.mediator.post(AppEvent.SearchRequested(it)) },
                         onPlay = { tracks, index -> app.mediator.post(AppEvent.PlayTracks(tracks, index)) },
+                        onSave = { app.mediator.post(AppEvent.AddToLibrary(listOf(it))) },
                     )
 
                     else -> SettingsScreen(
@@ -119,7 +123,6 @@ fun MusicaRoot(app: MusicaApp) {
                         },
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
                         onAccent = { app.mediator.post(AppEvent.SetAccent(it)) },
-                        onAmoled = { app.mediator.post(AppEvent.SetAmoled(it)) },
                     )
                 }
             }

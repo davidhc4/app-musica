@@ -1,6 +1,6 @@
 package com.davidhc4.musica.core
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
+enum class ThemeMode { LIGHT, DARK }
 
 enum class Accent(val label: String, val argb: Long) {
     VIOLETA("Violeta", 0xFF7B5CF0),
@@ -12,7 +12,6 @@ enum class Accent(val label: String, val argb: Long) {
 }
 
 data class AppSettings(
-    val mode: ThemeMode = ThemeMode.SYSTEM,
+    val mode: ThemeMode = ThemeMode.DARK,
     val accent: Accent = Accent.VIOLETA,
-    val amoled: Boolean = false,
 )

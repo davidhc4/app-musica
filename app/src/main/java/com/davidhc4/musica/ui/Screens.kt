@@ -25,9 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -55,6 +55,7 @@ import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.searchTracks
+import com.davidhc4.musica.search.SearchState
 
 @Composable
 private fun ScreenTitle(title: String, subtitle: String? = null, trailing: @Composable () -> Unit = {}) {
@@ -135,27 +136,56 @@ fun LibraryScreen(
 }
 
 @Composable
+private fun ListHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
 fun SearchScreen(
     library: List<Track>,
+    search: SearchState,
     currentId: String?,
     artwork: ArtworkLoader,
+    onQueryChange: (String) -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
+    onSave: (Track) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    val results = remember(query, library) { searchTracks(library, query) }
+    val local = remember(query, library) { searchTracks(library, query) }
+    val savedIds = remember(library) { library.map { it.id }.toSet() }
+    val online = if (query.isBlank()) emptyList() else search.results
+    val onlineActive = query.isNotBlank() && (search.loading || search.failed || online.isNotEmpty())
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(title = "Buscar")
 
         TextField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = {
+                query = it
+                onQueryChange(it)
+            },
             singleLine = true,
             placeholder = { Text("Canciones, artistas o álbumes") },
             leadingIcon = { Icon(AppIcons.Search, contentDescription = null, modifier = Modifier.size(22.dp)) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    IconTap(AppIcons.Close, "Borrar búsqueda", { query = "" }, size = 40.dp, iconSize = 20.dp)
+                    IconTap(
+                        AppIcons.Close,
+                        "Borrar búsqueda",
+                        {
+                            query = ""
+                            onQueryChange("")
+                        },
+                        size = 40.dp,
+                        iconSize = 20.dp,
+                    )
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -171,17 +201,17 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         when {
             query.isBlank() -> EmptyState(
                 icon = AppIcons.Search,
-                title = "Busca en tu música",
-                message = "Escribe el nombre de una canción, un artista o un álbum.",
+                title = "Busca música",
+                message = "Escribe una canción, un artista o un álbum y escúchalo al instante, sin tenerlo en tu celular.",
                 modifier = Modifier.weight(1f),
             )
 
-            results.isEmpty() -> EmptyState(
+            local.isEmpty() && !onlineActive -> EmptyState(
                 icon = AppIcons.Search,
                 title = "Sin resultados",
                 message = "No encontramos nada para “${query.trim()}”.",
@@ -192,12 +222,54 @@ fun SearchScreen(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             ) {
-                itemsIndexed(results, key = { _, track -> track.id }) { index, track ->
+                if (local.isNotEmpty()) {
+                    item(key = "header-local") { ListHeader("En tu biblioteca") }
+                    itemsIndexed(local, key = { _, track -> "local:${track.id}" }) { index, track ->
+                        SongRow(
+                            track = track,
+                            isCurrent = track.id == currentId,
+                            artwork = artwork,
+                            onClick = { onPlay(local, index) },
+                        )
+                    }
+                }
+
+                if (onlineActive) {
+                    item(key = "header-online") { ListHeader("En línea") }
+                }
+                if (search.loading && online.isEmpty()) {
+                    item(key = "loading") {
+                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                }
+                if (search.failed && online.isEmpty()) {
+                    item(key = "failed") {
+                        Text(
+                            "No se pudo buscar en línea. Revisa tu conexión a internet.",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                        )
+                    }
+                }
+                itemsIndexed(online, key = { _, track -> "online:${track.id}" }) { index, track ->
+                    val saved = track.id in savedIds
                     SongRow(
                         track = track,
                         isCurrent = track.id == currentId,
                         artwork = artwork,
-                        onClick = { onPlay(results, index) },
+                        onClick = { onPlay(online, index) },
+                        trailing = {
+                            IconTap(
+                                icon = if (saved) AppIcons.Check else AppIcons.Add,
+                                description = if (saved) "Guardada en tu biblioteca" else "Guardar en tu biblioteca",
+                                onClick = { if (!saved) onSave(track) },
+                                tint = if (saved) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
                     )
                 }
             }
@@ -222,7 +294,6 @@ fun SettingsScreen(
     versionName: String,
     onMode: (ThemeMode) -> Unit,
     onAccent: (Accent) -> Unit,
-    onAmoled: (Boolean) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(title = "Ajustes")
@@ -230,11 +301,7 @@ fun SettingsScreen(
         Column(Modifier.padding(horizontal = 20.dp)) {
             SectionLabel("Tema")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    ThemeMode.SYSTEM to "Sistema",
-                    ThemeMode.LIGHT to "Claro",
-                    ThemeMode.DARK to "Oscuro",
-                ).forEach { (mode, label) ->
+                listOf(ThemeMode.LIGHT to "Claro", ThemeMode.DARK to "Oscuro").forEach { (mode, label) ->
                     val selected = settings.mode == mode
                     Box(
                         Modifier
@@ -262,12 +329,11 @@ fun SettingsScreen(
             SectionLabel("Color de acento")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Accent.entries.forEach { accent ->
-                    val color = Color(accent.argb)
                     Box(
                         Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(color)
+                            .background(Color(accent.argb))
                             .clickable { onAccent(accent) },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -281,27 +347,6 @@ fun SettingsScreen(
                         }
                     }
                 }
-            }
-
-            SectionLabel("Fondo")
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Negro puro", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                    Text(
-                        "En el tema oscuro, usa un fondo totalmente negro.",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = settings.amoled, onCheckedChange = onAmoled)
             }
 
             SectionLabel("Acerca de")

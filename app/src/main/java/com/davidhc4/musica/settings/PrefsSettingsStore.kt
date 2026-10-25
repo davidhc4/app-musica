@@ -16,7 +16,6 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
                 .getOrDefault(defaults.mode),
             accent = runCatching { Accent.valueOf(prefs.getString("acento", null) ?: "") }
                 .getOrDefault(defaults.accent),
-            amoled = prefs.getBoolean("amoled", defaults.amoled),
         )
     }
 
@@ -24,7 +23,6 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
         prefs.edit()
             .putString("modo", settings.mode.name)
             .putString("acento", settings.accent.name)
-            .putBoolean("amoled", settings.amoled)
             .apply()
     }
 }
