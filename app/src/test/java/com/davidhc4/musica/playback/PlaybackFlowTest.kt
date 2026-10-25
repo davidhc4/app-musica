@@ -7,6 +7,7 @@ import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.player.PlaybackEngine
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.queue.QueueColleague
+import com.davidhc4.musica.mediatorScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -65,7 +66,7 @@ class PlaybackFlowTest {
         val player = PlayerColleague(engine)
         val errors = mutableListOf<String>()
         val mediator: Mediator = EventMediator(
-            scope.backgroundScope,
+            scope.mediatorScope(),
             listOf(queue, player, object : com.davidhc4.musica.core.BaseColleague() {
                 override suspend fun handle(event: AppEvent) {
                     if (event is AppEvent.ErrorOccurred) errors += event.message

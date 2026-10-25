@@ -1,5 +1,6 @@
 package com.davidhc4.musica.core
 
+import com.davidhc4.musica.mediatorScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -30,7 +31,7 @@ class EventMediatorTest {
             if (event is AppEvent.Pause) mediator.post(AppEvent.Resume)
         }
         val second = Recorder("2", log)
-        val mediator = EventMediator(backgroundScope, listOf(first, second))
+        val mediator = EventMediator(mediatorScope(), listOf(first, second))
 
         mediator.post(AppEvent.Pause)
         advanceUntilIdle()
@@ -42,7 +43,7 @@ class EventMediatorTest {
     @Test
     fun `los eventos se procesan en el orden en que se publican`() = runTest {
         val log = mutableListOf<String>()
-        val mediator = EventMediator(backgroundScope, listOf(Recorder("x", log)))
+        val mediator = EventMediator(mediatorScope(), listOf(Recorder("x", log)))
 
         mediator.post(AppEvent.Pause)
         mediator.post(AppEvent.Resume)
@@ -59,7 +60,7 @@ class EventMediatorTest {
         val broken = Recorder("roto", log) { _, _ -> error("fallo") }
         val healthy = Recorder("sano", log)
         val mediator = EventMediator(
-            backgroundScope,
+            mediatorScope(),
             listOf(broken, healthy),
             onError = { t, _ -> errors += t },
         )
@@ -81,7 +82,7 @@ class EventMediatorTest {
     fun `eventos con datos llegan intactos`() = runTest {
         var received: AppEvent? = null
         val mediator = EventMediator(
-            backgroundScope,
+            mediatorScope(),
             listOf(Recorder("x", mutableListOf()) { e, _ -> if (e is AppEvent.Enqueue) received = e }),
         )
 
