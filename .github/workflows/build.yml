@@ -24,7 +24,15 @@ jobs:
           gradle-version: "8.9"
 
       - name: Pruebas y compilación
-        run: gradle --no-daemon testDebugUnitTest assembleRelease
+        run: |
+          set +e
+          gradle --no-daemon testDebugUnitTest assembleRelease > build.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            msg=$(grep -E "^e: |error:|FAILED|What went wrong|Could not|Unresolved|Exception|Caused by" -A3 build.log | head -c 6000 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Falló la compilación::${msg}"
+          fi
+          exit $code
 
       - name: Publicar versión
         env:
