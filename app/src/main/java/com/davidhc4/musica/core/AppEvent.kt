@@ -8,6 +8,8 @@ data class Track(
     val album: String? = null,
     val durationMs: Long = 0L,
     val artworkUrl: String? = null,
+    /** Verdadero si solo se puede escuchar un fragmento corto de la canción. */
+    val isPreview: Boolean = false,
 )
 
 /**

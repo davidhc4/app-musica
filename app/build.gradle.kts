@@ -6,7 +6,7 @@ plugins {
 
 // Para publicar una versión nueva solo se cambia este número. El versionCode sale de él,
 // así cada versión es mayor que la anterior y Android la instala encima sin desinstalar.
-val appVersion = "0.3.1"
+val appVersion = "0.4.0"
 val (versionMajor, versionMinor, versionPatch) = appVersion.split(".").map { it.toInt() }
 
 android {

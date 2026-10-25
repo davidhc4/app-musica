@@ -40,6 +40,7 @@ class FileLibraryStore(private val file: File) : LibraryStore {
                     put("uri", t.uri)
                     put("durationMs", t.durationMs)
                     put("artworkUrl", t.artworkUrl ?: JSONObject.NULL)
+                    put("isPreview", t.isPreview)
                 }
             )
         }
@@ -58,6 +59,7 @@ class FileLibraryStore(private val file: File) : LibraryStore {
                 album = o.stringOrNull("album"),
                 durationMs = o.optLong("durationMs", 0L),
                 artworkUrl = o.stringOrNull("artworkUrl"),
+                isPreview = o.optBoolean("isPreview", false),
             )
         }
     }

@@ -406,6 +406,14 @@ fun PlayerScreen(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (track.isPreview) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Fragmento de 30 segundos",
+                fontSize = 12.sp,
+                color = colors.onSurfaceVariant.copy(alpha = 0.8f),
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
         SlimSeekBar(progress = progress.fraction, enabled = progress.durationMs > 0, onSeek = onSeek)

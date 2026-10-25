@@ -95,7 +95,7 @@ fun SongRow(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = track.artistOrUnknown(),
+                text = track.artistOrUnknown() + if (track.isPreview) " · 30 s" else "",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

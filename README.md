@@ -7,7 +7,7 @@ Reproductor de música para Android pensado para funcionar sin conexión: tu mú
 Ya puedes:
 
 - Agregar canciones de tu celular a una biblioteca que se guarda entre sesiones
-- Buscar música en línea (Audius) y escucharla al instante, sin tenerla en el celular; guardar las que te gusten en tu biblioteca
+- Buscar música en línea (catálogo de Deezer, las más escuchadas primero) y oír un fragmento de 30 segundos al instante, sin tenerla en el celular; guardar las que te gusten en tu biblioteca
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
 - Cambiar entre tema claro y oscuro
@@ -17,8 +17,8 @@ La carátula sale del propio archivo; si no trae ninguna, la app dibuja una port
 Pendiente:
 
 - Reproducción con la pantalla apagada
-- Descargar la música en línea para escucharla sin internet
-- Más fuentes de música libre y legal (Jamendo, Internet Archive)
+- Canciones completas: las fuentes libres (Audius, Jamendo, Internet Archive) las permiten, pero casi no tienen artistas conocidos
+- Descargar música en línea para escucharla sin internet
 - Listas de reproducción, aleatorio y repetir
 
 ## Instalar
