@@ -10,7 +10,7 @@ Ya puedes:
 - Buscar música en línea (Audius) y escucharla al instante, sin tenerla en el celular; guardar las que te gusten en tu biblioteca
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
-- Cambiar entre tema claro y oscuro, y elegir el color de acento
+- Cambiar entre tema claro y oscuro
 
 La carátula sale del propio archivo; si no trae ninguna, la app dibuja una portada con colores propios.
 

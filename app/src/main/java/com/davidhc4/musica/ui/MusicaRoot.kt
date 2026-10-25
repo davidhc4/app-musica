@@ -122,7 +122,6 @@ fun MusicaRoot(app: MusicaApp) {
                             }.getOrNull().orEmpty()
                         },
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
-                        onAccent = { app.mediator.post(AppEvent.SetAccent(it)) },
                     )
                 }
             }

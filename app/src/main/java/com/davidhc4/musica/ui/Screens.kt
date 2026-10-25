@@ -50,7 +50,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.davidhc4.musica.core.Accent
 import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
@@ -293,7 +292,6 @@ fun SettingsScreen(
     settings: AppSettings,
     versionName: String,
     onMode: (ThemeMode) -> Unit,
-    onAccent: (Accent) -> Unit,
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(title = "Ajustes")
@@ -322,29 +320,6 @@ fun SettingsScreen(
                             color = if (selected) MaterialTheme.colorScheme.onPrimary
                             else MaterialTheme.colorScheme.onSurface,
                         )
-                    }
-                }
-            }
-
-            SectionLabel("Color de acento")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Accent.entries.forEach { accent ->
-                    Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(accent.argb))
-                            .clickable { onAccent(accent) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (settings.accent == accent) {
-                            Icon(
-                                AppIcons.Check,
-                                contentDescription = accent.label,
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
                     }
                 }
             }

@@ -38,7 +38,6 @@ sealed interface AppEvent {
 
     // Apariencia
     data class SetThemeMode(val mode: ThemeMode) : AppEvent
-    data class SetAccent(val accent: Accent) : AppEvent
 
     // Avisos (los publican los componentes)
     data class CurrentTrackChanged(val track: Track?) : AppEvent

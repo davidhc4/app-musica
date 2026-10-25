@@ -13,12 +13,14 @@ import androidx.compose.ui.graphics.luminance
 import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.ThemeMode
 
+/** Color principal de la app. */
+private val Accent = Color(0xFF7B5CF0)
+
 fun isDarkTheme(settings: AppSettings): Boolean = settings.mode == ThemeMode.DARK
 
 @Composable
 fun MusicaTheme(settings: AppSettings, content: @Composable () -> Unit) {
-    val accent = Color(settings.accent.argb)
-    val scheme = if (isDarkTheme(settings)) darkScheme(accent) else lightScheme(accent)
+    val scheme = if (isDarkTheme(settings)) darkScheme(Accent) else lightScheme(Accent)
     MaterialTheme(colorScheme = scheme) {
         // Sin esto, el texto que no tiene color propio salía negro, también sobre fondo oscuro.
         CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)

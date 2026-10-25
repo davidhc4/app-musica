@@ -1,6 +1,5 @@
 package com.davidhc4.musica.settings
 
-import com.davidhc4.musica.core.Accent
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.EventMediator
@@ -26,8 +25,8 @@ class SettingsColleagueTest {
 
     @Test
     fun `empieza con lo guardado`() {
-        val store = FakeSettingsStore(AppSettings(ThemeMode.LIGHT, Accent.ROSA))
-        assertEquals(AppSettings(ThemeMode.LIGHT, Accent.ROSA), SettingsColleague(store).state.value)
+        val store = FakeSettingsStore(AppSettings(ThemeMode.LIGHT))
+        assertEquals(AppSettings(ThemeMode.LIGHT), SettingsColleague(store).state.value)
     }
 
     @Test
@@ -36,28 +35,26 @@ class SettingsColleagueTest {
     }
 
     @Test
-    fun `los cambios se aplican y se guardan`() = runTest {
+    fun `cambiar de tema se aplica y se guarda`() = runTest {
         val store = FakeSettingsStore()
         val settings = SettingsColleague(store)
         val mediator = EventMediator(mediatorScope(), listOf(settings))
 
         mediator.post(AppEvent.SetThemeMode(ThemeMode.LIGHT))
-        mediator.post(AppEvent.SetAccent(Accent.VERDE))
         advanceUntilIdle()
 
-        assertEquals(AppSettings(ThemeMode.LIGHT, Accent.VERDE), settings.state.value)
+        assertEquals(ThemeMode.LIGHT, settings.state.value.mode)
         assertEquals(settings.state.value, store.stored)
-        assertEquals(2, store.saves)
+        assertEquals(1, store.saves)
     }
 
     @Test
-    fun `repetir el mismo valor no escribe de nuevo`() = runTest {
+    fun `repetir el mismo tema no escribe de nuevo`() = runTest {
         val store = FakeSettingsStore()
         val settings = SettingsColleague(store)
         val mediator = EventMediator(mediatorScope(), listOf(settings))
 
         mediator.post(AppEvent.SetThemeMode(ThemeMode.DARK))
-        mediator.post(AppEvent.SetAccent(Accent.VIOLETA))
         advanceUntilIdle()
 
         assertEquals(0, store.saves)

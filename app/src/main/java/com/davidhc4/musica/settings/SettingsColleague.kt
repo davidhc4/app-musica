@@ -21,7 +21,6 @@ class SettingsColleague(private val store: SettingsStore) : BaseColleague() {
         val current = _state.value
         val updated = when (event) {
             is AppEvent.SetThemeMode -> current.copy(mode = event.mode)
-            is AppEvent.SetAccent -> current.copy(accent = event.accent)
             else -> return
         }
         if (updated == current) return
