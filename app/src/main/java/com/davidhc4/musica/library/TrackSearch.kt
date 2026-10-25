@@ -5,7 +5,7 @@ import java.text.Normalizer
 
 private val accents = Regex("\\p{M}+")
 
-internal fun String.normalized(): String =
+fun String.normalized(): String =
     Normalizer.normalize(lowercase(), Normalizer.Form.NFD).replace(accents, "")
 
 /**

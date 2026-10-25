@@ -55,4 +55,22 @@ class AudiusParseTest {
     fun `una respuesta sin datos devuelve lista vacia`() {
         assertTrue(parseAudiusTracks("{}", base, "Musica").isEmpty())
     }
+
+    private val ranking = """
+        {"data":[
+          {"id":"a","title":"Luna Llena","duration":200,"play_count":50,"user":{"name":"Indie","is_verified":false}},
+          {"id":"b","title":"Luna Llena","duration":200,"play_count":10,"user":{"name":"Indie","is_verified":false}},
+          {"id":"c","title":"Luna Roja","duration":210,"play_count":5,"user":{"name":"Oficial","is_verified":true}},
+          {"id":"d","title":"Luna Mix 1 hora","duration":3600,"play_count":999999,"user":{"name":"DJ","is_verified":false}},
+          {"id":"e","title":"Luna Corta","duration":20,"play_count":999999,"user":{"name":"DJ","is_verified":false}},
+          {"id":"f","title":"Sol","duration":200,"play_count":999999,"user":{"name":"Otro","is_verified":false}}
+        ]}
+    """.trimIndent()
+
+    @Test
+    fun `ordena verificados primero y luego por reproducciones sin mezclas ni repetidas`() {
+        val ids = rankAudiusTracks(ranking, base, "Musica", "luna", 10).map { it.id }
+
+        assertEquals(listOf("audius:c", "audius:a"), ids)
+    }
 }

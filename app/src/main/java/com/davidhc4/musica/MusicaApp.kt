@@ -11,7 +11,10 @@ import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.queue.QueueColleague
 import com.davidhc4.musica.search.SearchColleague
-import com.davidhc4.musica.source.DeezerSource
+import com.davidhc4.musica.source.AudiusSource
+import com.davidhc4.musica.source.CompositeSource
+import com.davidhc4.musica.source.JamendoConfig
+import com.davidhc4.musica.source.JamendoSource
 import com.davidhc4.musica.settings.PrefsSettingsStore
 import com.davidhc4.musica.settings.SettingsColleague
 import com.davidhc4.musica.ui.ArtworkLoader
@@ -46,7 +49,15 @@ class MusicaApp : Application() {
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        search = SearchColleague(appScope, DeezerSource())
+        search = SearchColleague(
+            appScope,
+            CompositeSource(
+                listOfNotNull(
+                    AudiusSource(),
+                    JamendoConfig.CLIENT_ID.takeIf { it.isNotBlank() }?.let { JamendoSource(it) },
+                )
+            ),
+        )
         mediator = EventMediator(
             scope = appScope,
             colleagues = listOf(queue, player, library, settings, search),
