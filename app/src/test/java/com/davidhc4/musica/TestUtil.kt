@@ -5,7 +5,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.testScheduler
 
 /**
  * Alcance para el mediador en pruebas. No se usa backgroundScope porque advanceUntilIdle()
