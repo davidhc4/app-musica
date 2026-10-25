@@ -4,14 +4,20 @@ Reproductor de música para Android pensado para funcionar sin conexión: tu mú
 
 ## Estado
 
-Versión inicial. Por ahora puedes elegir canciones de tu celular, armar una cola y reproducirlas.
+Ya puedes:
+
+- Agregar canciones de tu celular a una biblioteca que se guarda entre sesiones
+- Buscar por canción, artista o álbum
+- Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
+- Cambiar entre tema claro, oscuro o el del sistema, elegir color de acento y usar fondo negro puro
+
+La carátula sale del propio archivo; si no trae ninguna, la app dibuja una portada con colores propios.
 
 Pendiente:
 
-- Biblioteca guardada entre sesiones
-- Descarga de música libre y legal (Jamendo, Internet Archive, Free Music Archive)
 - Reproducción con la pantalla apagada
-- Listas de reproducción
+- Descarga de música libre y legal (Jamendo, Internet Archive, Free Music Archive)
+- Listas de reproducción, aleatorio y repetir
 
 ## Instalar
 
@@ -23,10 +29,12 @@ Escrita en Kotlin con Jetpack Compose y Media3. Los componentes (cola, reproduct
 
 ```
 app/src/main/java/com/davidhc4/musica/
-├── core/      mediador y eventos
+├── core/      mediador, eventos y ajustes
 ├── queue/     cola de reproducción
 ├── player/    motor de audio
-└── MainActivity.kt
+├── library/   biblioteca guardada y búsqueda
+├── settings/  tema y personalización
+└── ui/        pantallas y componentes
 ```
 
 ## Compilar
@@ -37,4 +45,4 @@ Requiere JDK 17 y Gradle 8.9.
 gradle testDebugUnitTest assembleRelease
 ```
 
-Cada cambio que entra a `main` se prueba y compila solo en GitHub Actions; si la versión en `app/build.gradle.kts` es nueva, se publica el APK.
+Cada cambio que entra a `main` se prueba y compila solo en GitHub Actions; si `appVersion` en `app/build.gradle.kts` es nueva, se publica el APK.

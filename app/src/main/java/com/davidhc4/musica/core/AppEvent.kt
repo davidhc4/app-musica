@@ -5,6 +5,8 @@ data class Track(
     val title: String,
     val artist: String? = null,
     val uri: String,
+    val album: String? = null,
+    val durationMs: Long = 0L,
 )
 
 /**
@@ -13,7 +15,10 @@ data class Track(
  */
 sealed interface AppEvent {
 
-    // Órdenes (las publica la interfaz)
+    // Arranque
+    data object AppStarted : AppEvent
+
+    // Órdenes de reproducción (las publica la interfaz)
     data class PlayTracks(val tracks: List<Track>, val startIndex: Int = 0) : AppEvent
     data class Enqueue(val tracks: List<Track>) : AppEvent
     data object ClearQueue : AppEvent
@@ -22,6 +27,15 @@ sealed interface AppEvent {
     data object Next : AppEvent
     data object Previous : AppEvent
     data class SeekTo(val positionMs: Long) : AppEvent
+
+    // Biblioteca
+    data class AddToLibrary(val tracks: List<Track>) : AppEvent
+    data class RemoveFromLibrary(val trackId: String) : AppEvent
+
+    // Apariencia
+    data class SetThemeMode(val mode: ThemeMode) : AppEvent
+    data class SetAccent(val accent: Accent) : AppEvent
+    data class SetAmoled(val enabled: Boolean) : AppEvent
 
     // Avisos (los publican los componentes)
     data class CurrentTrackChanged(val track: Track?) : AppEvent

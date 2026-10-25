@@ -38,11 +38,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          VERSION=$(grep -oP 'val appVersion = "\K[^"]+' app/build.gradle.kts)
           TAG="v$VERSION"
           cp app/build/outputs/apk/release/app-release.apk "Musica-$VERSION.apk"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "La versión $TAG ya existe. Sube versionName para publicar otra."
+            echo "La versión $TAG ya existe. Sube appVersion en app/build.gradle.kts para publicar otra."
           else
             gh release create "$TAG" "Musica-$VERSION.apk" \
               --title "Música $VERSION" \

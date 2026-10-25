@@ -4,6 +4,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Para publicar una versión nueva solo se cambia este número. El versionCode sale de él,
+// así cada versión es mayor que la anterior y Android la instala encima sin desinstalar.
+val appVersion = "0.2.0"
+val (versionMajor, versionMinor, versionPatch) = appVersion.split(".").map { it.toInt() }
+
 android {
     namespace = "com.davidhc4.musica"
     compileSdk = 34
@@ -12,8 +17,8 @@ android {
         applicationId = "com.davidhc4.musica"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = versionMajor * 10000 + versionMinor * 100 + versionPatch
+        versionName = appVersion
     }
 
     // Llave fija para que cada versión se pueda instalar encima de la anterior.
