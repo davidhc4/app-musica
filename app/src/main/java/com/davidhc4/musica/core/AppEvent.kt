@@ -41,6 +41,10 @@ sealed interface AppEvent {
     // Apariencia
     data class SetThemeMode(val mode: ThemeMode) : AppEvent
 
+    // Actualizaciones de la app
+    data object CheckForUpdates : AppEvent
+    data object InstallUpdate : AppEvent
+
     // Avisos (los publican los componentes)
     data class CurrentTrackChanged(val track: Track?) : AppEvent
     data class QueueChanged(val tracks: List<Track>, val currentIndex: Int) : AppEvent

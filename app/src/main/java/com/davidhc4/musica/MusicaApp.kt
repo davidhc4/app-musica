@@ -18,6 +18,9 @@ import com.davidhc4.musica.source.JamendoSource
 import com.davidhc4.musica.settings.PrefsSettingsStore
 import com.davidhc4.musica.settings.SettingsColleague
 import com.davidhc4.musica.ui.ArtworkLoader
+import com.davidhc4.musica.update.GitHubUpdateService
+import com.davidhc4.musica.update.UpdateColleague
+import com.davidhc4.musica.update.openApkInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,6 +38,8 @@ class MusicaApp : Application() {
     lateinit var settings: SettingsColleague
         private set
     lateinit var search: SearchColleague
+        private set
+    lateinit var updates: UpdateColleague
         private set
     lateinit var artwork: ArtworkLoader
         private set
@@ -58,9 +63,19 @@ class MusicaApp : Application() {
                 )
             ),
         )
+        updates = UpdateColleague(
+            scope = appScope,
+            service = GitHubUpdateService(File(cacheDir, "actualizaciones")),
+            currentVersion = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }
+                .getOrNull().orEmpty(),
+            install = { apk ->
+                runCatching { openApkInstaller(this, apk) }
+                    .onFailure { Log.e("Musica", "No se pudo abrir el instalador", it) }
+            },
+        )
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, library, settings, search),
+            colleagues = listOf(queue, player, library, settings, search, updates),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

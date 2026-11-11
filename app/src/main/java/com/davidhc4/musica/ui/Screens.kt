@@ -55,6 +55,8 @@ import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.searchTracks
 import com.davidhc4.musica.search.SearchState
+import com.davidhc4.musica.update.UpdateState
+import com.davidhc4.musica.update.UpdateStatus
 
 @Composable
 private fun ScreenTitle(title: String, subtitle: String? = null, trailing: @Composable () -> Unit = {}) {
@@ -291,7 +293,10 @@ private fun SectionLabel(text: String) {
 fun SettingsScreen(
     settings: AppSettings,
     versionName: String,
+    update: UpdateState,
     onMode: (ThemeMode) -> Unit,
+    onCheckUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(title = "Ajustes")
@@ -324,9 +329,61 @@ fun SettingsScreen(
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+            SectionLabel("Actualizaciones")
+            UpdateSection(update, onCheckUpdates, onInstallUpdate)
+
+            Spacer(Modifier.height(16.dp))
             SectionLabel("Acerca de")
             Text("Música $versionName", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+@Composable
+private fun UpdateSection(update: UpdateState, onCheck: () -> Unit, onInstall: () -> Unit) {
+    val version = update.latestVersion.orEmpty()
+    val message = when (update.status) {
+        UpdateStatus.IDLE -> "Toca para buscar una versión nueva."
+        UpdateStatus.CHECKING -> "Buscando…"
+        UpdateStatus.UP_TO_DATE -> "Tienes la última versión."
+        UpdateStatus.AVAILABLE -> "Hay una versión nueva: $version"
+        UpdateStatus.DOWNLOADING -> "Descargando $version… ${(update.progress * 100).toInt()}%"
+        UpdateStatus.READY -> "Versión $version descargada. Falta instalarla."
+        UpdateStatus.FAILED -> "No se pudo. Revisa tu conexión e intenta de nuevo."
+    }
+    // Si falló la descarga se reintenta la descarga; si falló la búsqueda, la búsqueda.
+    val canInstall = update.latestVersion != null &&
+        update.status in setOf(UpdateStatus.AVAILABLE, UpdateStatus.READY, UpdateStatus.FAILED)
+    val busy = update.status == UpdateStatus.CHECKING || update.status == UpdateStatus.DOWNLOADING
+    val label = when {
+        update.status == UpdateStatus.READY -> "Instalar"
+        update.status == UpdateStatus.FAILED -> "Reintentar"
+        canInstall -> "Actualizar"
+        else -> "Buscar actualizaciones"
+    }
+
+    Text(message, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(10.dp))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(CircleShape)
+            .background(
+                if (canInstall) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant
+            )
+            .clickable(enabled = !busy) { if (canInstall) onInstall() else onCheck() }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = (if (canInstall) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface).copy(alpha = if (busy) 0.5f else 1f),
+        )
     }
 }
 

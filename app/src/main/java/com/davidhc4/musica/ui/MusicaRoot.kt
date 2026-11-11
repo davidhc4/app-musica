@@ -12,7 +12,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -30,6 +33,7 @@ import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.library.readTrack
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.PlayerState
+import com.davidhc4.musica.update.UpdateStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,10 +69,13 @@ fun MusicaRoot(app: MusicaApp) {
     val player by app.player.state.collectAsState()
     val settings by app.settings.state.collectAsState()
     val search by app.search.state.collectAsState()
+    val update by app.updates.state.collectAsState()
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    // Versión nueva que ya se ofreció y se dejó para después; no se vuelve a preguntar por ella.
+    var postponedVersion by rememberSaveable { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -121,7 +128,10 @@ fun MusicaRoot(app: MusicaApp) {
                                 context.packageManager.getPackageInfo(context.packageName, 0).versionName
                             }.getOrNull().orEmpty()
                         },
+                        update = update,
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
+                        onCheckUpdates = { app.mediator.post(AppEvent.CheckForUpdates) },
+                        onInstallUpdate = { app.mediator.post(AppEvent.InstallUpdate) },
                     )
                 }
             }
@@ -164,6 +174,24 @@ fun MusicaRoot(app: MusicaApp) {
                     },
                 )
             }
+        }
+
+        val offered = update.latestVersion
+        if (update.status == UpdateStatus.AVAILABLE && offered != null && offered != postponedVersion) {
+            AlertDialog(
+                onDismissRequest = { postponedVersion = offered },
+                title = { Text("Hay una versión nueva") },
+                text = { Text("Música $offered está lista para descargar. Se instala encima de la actual y no se pierde tu biblioteca.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        postponedVersion = offered
+                        app.mediator.post(AppEvent.InstallUpdate)
+                    }) { Text("Actualizar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { postponedVersion = offered }) { Text("Después") }
+                },
+            )
         }
     }
 }

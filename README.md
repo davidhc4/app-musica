@@ -11,6 +11,7 @@ Ya puedes:
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
 - Cambiar entre tema claro y oscuro
+- Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 
 La carátula sale del propio archivo; si no trae ninguna, la app dibuja una portada con colores propios.
 
@@ -24,6 +25,8 @@ Pendiente:
 ## Instalar
 
 Descarga el APK más reciente desde la sección **Releases** de este repositorio y ábrelo en tu celular. Android te pedirá permitir instalar apps de esta fuente.
+
+Eso solo hace falta la primera vez. Desde la versión 0.6.0 la app se actualiza sola: avisa al abrirla y se instala encima de la anterior.
 
 ## Cómo está hecha
 
@@ -39,6 +42,7 @@ app/src/main/java/com/davidhc4/musica/
 ├── source/    fuentes de música en línea
 ├── net/       descargas simples por internet
 ├── settings/  tema y personalización
+├── update/    actualizaciones de la app
 └── ui/        pantallas y componentes
 ```
 
