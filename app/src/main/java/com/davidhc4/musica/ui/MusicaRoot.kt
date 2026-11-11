@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import com.davidhc4.musica.MusicaApp
 import com.davidhc4.musica.core.AppEvent
+import com.davidhc4.musica.download.canDownload
 import com.davidhc4.musica.library.readTrack
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.PlayerState
@@ -73,6 +74,7 @@ fun MusicaRoot(app: MusicaApp) {
     val search by app.search.state.collectAsState()
     val update by app.updates.state.collectAsState()
     val likes by app.likes.state.collectAsState()
+    val downloads by app.downloads.state.collectAsState()
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -116,6 +118,8 @@ fun MusicaRoot(app: MusicaApp) {
                     0 -> LibraryScreen(
                         tracks = library.tracks,
                         liked = likes.tracks,
+                        downloaded = downloads.tracks,
+                        onRemoveDownload = { app.mediator.post(AppEvent.RemoveDownload(it.id)) },
                         currentId = currentTrack?.id,
                         artwork = app.artwork,
                         onAddSongs = addSongs,
@@ -190,6 +194,22 @@ fun MusicaRoot(app: MusicaApp) {
                     videoSlot = panelSlot,
                     liked = currentTrack.id in likes.ids,
                     onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
+                    download = when {
+                        currentTrack.id in downloads.ids -> DownloadStatus.DONE
+                        currentTrack.id in downloads.inProgress -> DownloadStatus.RUNNING
+                        canDownload(currentTrack) -> DownloadStatus.AVAILABLE
+                        else -> DownloadStatus.NONE
+                    },
+                    downloadProgress = downloads.inProgress[currentTrack.id] ?: 0f,
+                    onDownload = {
+                        app.mediator.post(
+                            if (currentTrack.id in downloads.ids || currentTrack.id in downloads.inProgress) {
+                                AppEvent.RemoveDownload(currentTrack.id)
+                            } else {
+                                AppEvent.DownloadTrack(currentTrack)
+                            }
+                        )
+                    },
                 )
             }
         }

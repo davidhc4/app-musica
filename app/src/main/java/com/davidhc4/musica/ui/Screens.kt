@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,13 +91,44 @@ fun LibraryScreen(
     onRemove: (Track) -> Unit,
     liked: List<Track> = emptyList(),
     onToggleLike: (Track) -> Unit = {},
+    downloaded: List<Track> = emptyList(),
+    onRemoveDownload: (Track) -> Unit = {},
 ) {
     var toRemove by remember { mutableStateOf<Track?>(null) }
-    var showLiked by rememberSaveable { mutableStateOf(false) }
+    // Álbum abierto: "liked", "downloads" o ninguno.
+    var album by rememberSaveable { mutableStateOf<String?>(null) }
 
-    if (showLiked) {
-        BackHandler { showLiked = false }
-        LikedScreen(liked, currentId, artwork, onBack = { showLiked = false }, onPlay = onPlay, onToggleLike = onToggleLike)
+    if (album != null) {
+        BackHandler { album = null }
+        if (album == "liked") {
+            AlbumScreen(
+                title = "Te gustan",
+                tracks = liked,
+                currentId = currentId,
+                artwork = artwork,
+                emptyIcon = AppIcons.FavoriteBorder,
+                emptyMessage = "Toca el corazón en el reproductor y la canción se guarda aquí.",
+                rowIcon = AppIcons.Favorite,
+                rowAction = "Quitar de las que te gustan",
+                onBack = { album = null },
+                onPlay = onPlay,
+                onRowAction = onToggleLike,
+            )
+        } else {
+            AlbumScreen(
+                title = "Descargadas",
+                tracks = downloaded,
+                currentId = currentId,
+                artwork = artwork,
+                emptyIcon = AppIcons.Download,
+                emptyMessage = "Toca la flecha de descarga en el reproductor y la canción suena sin internet.",
+                rowIcon = AppIcons.DownloadDone,
+                rowAction = "Quitar la descarga",
+                onBack = { album = null },
+                onPlay = onPlay,
+                onRowAction = onRemoveDownload,
+            )
+        }
         return
     }
 
@@ -108,7 +140,7 @@ fun LibraryScreen(
             IconTap(AppIcons.Add, "Agregar canciones", onAddSongs, tint = MaterialTheme.colorScheme.primary)
         }
 
-        if (tracks.isEmpty() && liked.isEmpty()) {
+        if (tracks.isEmpty() && liked.isEmpty() && downloaded.isEmpty()) {
             EmptyState(
                 icon = AppIcons.MusicNote,
                 title = "Tu biblioteca está vacía",
@@ -120,7 +152,22 @@ fun LibraryScreen(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             ) {
-                item(key = "album-liked") { LikedAlbumRow(liked.size) { showLiked = true } }
+                item(key = "album-liked") {
+                    AlbumRow(
+                        title = "Canciones que te gustan",
+                        count = liked.size,
+                        icon = AppIcons.Favorite,
+                        colors = listOf(Color(0xFF7B5CF0), Color(0xFFE0569B)),
+                    ) { album = "liked" }
+                }
+                item(key = "album-downloads") {
+                    AlbumRow(
+                        title = "Descargadas",
+                        count = downloaded.size,
+                        icon = AppIcons.Download,
+                        colors = listOf(Color(0xFF2E9E6B), Color(0xFF2A7FD0)),
+                    ) { album = "downloads" }
+                }
                 itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
                     SongRow(
                         track = track,
@@ -150,9 +197,9 @@ fun LibraryScreen(
     }
 }
 
-/** Fila que abre el álbum con las canciones marcadas con "me gusta". */
+/** Fila que abre un álbum fijo de la biblioteca, como "te gustan" o "descargadas". */
 @Composable
-private fun LikedAlbumRow(count: Int, onOpen: () -> Unit) {
+private fun AlbumRow(title: String, count: Int, icon: ImageVector, colors: List<Color>, onOpen: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -165,14 +212,14 @@ private fun LikedAlbumRow(count: Int, onOpen: () -> Unit) {
             Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF7B5CF0), Color(0xFFE0569B)))),
+                .background(Brush.linearGradient(colors)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text("Canciones que te gustan", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(2.dp))
             Text(
                 if (count == 1) "1 canción" else "$count canciones",
@@ -184,14 +231,20 @@ private fun LikedAlbumRow(count: Int, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun LikedScreen(
-    liked: List<Track>,
+private fun AlbumScreen(
+    title: String,
+    tracks: List<Track>,
     currentId: String?,
     artwork: ArtworkLoader,
+    emptyIcon: ImageVector,
+    emptyMessage: String,
+    rowIcon: ImageVector,
+    rowAction: String,
     onBack: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
-    onToggleLike: (Track) -> Unit,
+    onRowAction: (Track) -> Unit,
 ) {
+    val liked = tracks
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(
             Modifier
@@ -202,7 +255,7 @@ private fun LikedScreen(
             IconTap(AppIcons.ArrowBack, "Volver", onBack)
             Spacer(Modifier.width(4.dp))
             Column(Modifier.weight(1f)) {
-                Text("Te gustan", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text(title, fontSize = 30.sp, fontWeight = FontWeight.Bold)
                 Text(
                     if (liked.size == 1) "1 canción" else "${liked.size} canciones",
                     fontSize = 14.sp,
@@ -213,9 +266,9 @@ private fun LikedScreen(
 
         if (liked.isEmpty()) {
             EmptyState(
-                icon = AppIcons.FavoriteBorder,
+                icon = emptyIcon,
                 title = "Aún no hay canciones",
-                message = "Toca el corazón en el reproductor y la canción se guarda aquí.",
+                message = emptyMessage,
                 modifier = Modifier.weight(1f),
             )
         } else {
@@ -231,9 +284,9 @@ private fun LikedScreen(
                         onClick = { onPlay(liked, index) },
                         trailing = {
                             IconTap(
-                                icon = AppIcons.Favorite,
-                                description = "Quitar de las que te gustan",
-                                onClick = { onToggleLike(track) },
+                                icon = rowIcon,
+                                description = rowAction,
+                                onClick = { onRowAction(track) },
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         },
@@ -572,6 +625,9 @@ private fun UpdateSection(update: UpdateState, onCheck: () -> Unit, onInstall: (
     }
 }
 
+/** Qué puede hacerse con la descarga de la canción que suena. */
+enum class DownloadStatus { NONE, AVAILABLE, RUNNING, DONE }
+
 @Composable
 fun PlayerScreen(
     track: Track,
@@ -586,6 +642,9 @@ fun PlayerScreen(
     videoSlot: (@Composable (Modifier) -> Unit)? = null,
     liked: Boolean = false,
     onToggleLike: () -> Unit = {},
+    download: DownloadStatus = DownloadStatus.NONE,
+    downloadProgress: Float = 0f,
+    onDownload: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
@@ -657,6 +716,31 @@ fun PlayerScreen(
                     color = colors.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            when (download) {
+                DownloadStatus.NONE -> Unit
+                DownloadStatus.RUNNING -> Box(
+                    Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onDownload),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Algunas fuentes no dicen el tamaño; entonces el círculo gira sin porcentaje.
+                    if (downloadProgress > 0f) {
+                        CircularProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    }
+                }
+                else -> IconTap(
+                    icon = if (download == DownloadStatus.DONE) AppIcons.DownloadDone else AppIcons.Download,
+                    description = if (download == DownloadStatus.DONE) "Quitar la descarga" else "Descargar",
+                    onClick = onDownload,
+                    iconSize = 26.dp,
+                    tint = if (download == DownloadStatus.DONE) colors.primary else colors.onSurfaceVariant,
                 )
             }
             IconTap(

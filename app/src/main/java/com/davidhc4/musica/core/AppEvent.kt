@@ -36,6 +36,10 @@ sealed interface AppEvent {
     data class RemoveFromLibrary(val trackId: String) : AppEvent
     data class ToggleLike(val track: Track) : AppEvent
 
+    // Descargas para oír sin internet
+    data class DownloadTrack(val track: Track) : AppEvent
+    data class RemoveDownload(val trackId: String) : AppEvent
+
     // Búsqueda en línea
     data class SearchRequested(val query: String) : AppEvent
 

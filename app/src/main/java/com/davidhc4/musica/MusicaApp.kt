@@ -5,6 +5,9 @@ import android.util.Log
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.core.EventMediator
 import com.davidhc4.musica.core.Mediator
+import com.davidhc4.musica.download.DownloadColleague
+import com.davidhc4.musica.net.httpDownload
+import kotlinx.coroutines.withContext
 import com.davidhc4.musica.library.FileLibraryStore
 import com.davidhc4.musica.library.LibraryColleague
 import com.davidhc4.musica.library.LikesColleague
@@ -41,6 +44,8 @@ class MusicaApp : Application() {
         private set
     lateinit var library: LibraryColleague
         private set
+    lateinit var downloads: DownloadColleague
+        private set
     lateinit var likes: LikesColleague
         private set
     lateinit var settings: SettingsColleague
@@ -63,12 +68,24 @@ class MusicaApp : Application() {
         queue = QueueColleague()
         youtube = YouTubeEngine(this)
         audio = Media3Engine(this)
-        player = PlayerColleague(RoutingEngine(audio, youtube, ::isYouTubeUri))
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        downloads = DownloadColleague(
+            scope = appScope,
+            index = FileLibraryStore(File(filesDir, "descargas.json")),
+            dir = File(filesDir, "descargas"),
+            fetch = { url, target, onProgress ->
+                withContext(Dispatchers.IO) { httpDownload(url, target, onProgress = onProgress) }
+            },
+        )
+        player = PlayerColleague(
+            engine = RoutingEngine(audio, youtube, ::isYouTubeUri),
+            // Si la canción está descargada, suena desde el celular y no gasta internet.
+            resolve = { track -> downloads.localUri(track.id)?.let { track.copy(uri = it) } ?: track },
+        )
         library = LibraryColleague(FileLibraryStore(File(filesDir, "biblioteca.json")))
         likes = LikesColleague(FileLibraryStore(File(filesDir, "megusta.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
-        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val freeMusic = CompositeSource(
             listOfNotNull(
                 AudiusSource(),
@@ -98,7 +115,7 @@ class MusicaApp : Application() {
         )
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, library, likes, settings, search, updates),
+            colleagues = listOf(queue, player, library, likes, downloads, settings, search, updates),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

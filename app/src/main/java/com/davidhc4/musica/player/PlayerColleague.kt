@@ -12,7 +12,11 @@ data class PlayerState(
 )
 
 /** Controla el audio. No sabe de la cola: solo reacciona a "cambió la canción actual". */
-class PlayerColleague(private val engine: PlaybackEngine) : BaseColleague() {
+class PlayerColleague(
+    private val engine: PlaybackEngine,
+    /** Permite cambiar de dónde se lee la canción, por ejemplo al archivo descargado. */
+    private val resolve: (Track) -> Track = { it },
+) : BaseColleague() {
 
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state
@@ -47,7 +51,7 @@ class PlayerColleague(private val engine: PlaybackEngine) : BaseColleague() {
                 if (track == null) {
                     engine.stop()
                 } else {
-                    engine.load(track)
+                    engine.load(resolve(track))
                     engine.play()
                 }
             }

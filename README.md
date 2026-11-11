@@ -13,6 +13,7 @@ Ya puedes:
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
 - Marcar canciones con "me gusta" y encontrarlas en el álbum "Canciones que te gustan"
 - Seguir oyendo tus archivos y la música libre con la pantalla apagada, con controles en la notificación y en la pantalla de bloqueo (las canciones de YouTube se pausan al salir, como exige YouTube)
+- Descargar la música libre (Audius) para oírla sin internet; queda en el álbum "Descargadas"
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 
@@ -21,7 +22,6 @@ La carátula sale del propio archivo; si no trae ninguna, la app dibuja una port
 Pendiente:
 
 - Activar Jamendo: crear una llave gratuita en devportal.jamendo.com y ponerla en `JamendoConfig.CLIENT_ID`
-- Descargar música en línea para escucharla sin internet
 - Listas de reproducción, aleatorio y repetir
 
 ## Instalar
