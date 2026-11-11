@@ -26,8 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.net.httpGetBytes
-import com.davidhc4.musica.source.YOUTUBE_PREFIX
-import com.davidhc4.musica.source.isYouTubeUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -99,15 +97,7 @@ class ArtworkLoader(private val context: Context) {
 }
 
 /** Direcciones donde buscar la carátula, de la mejor a la más básica. */
-fun artworkUrls(track: Track): List<String> {
-    if (!isYouTubeUri(track.uri)) return listOfNotNull(track.artworkUrl)
-    val id = track.uri.removePrefix(YOUTUBE_PREFIX)
-    return listOf(
-        "https://i.ytimg.com/vi/$id/maxresdefault.jpg",
-        "https://i.ytimg.com/vi/$id/hq720.jpg",
-        "https://i.ytimg.com/vi/$id/mqdefault.jpg",
-    ) + listOfNotNull(track.artworkUrl)
-}
+fun artworkUrls(track: Track): List<String> = listOfNotNull(track.artworkUrl)
 
 /**
  * Muestra la carátula de la canción. Si el archivo no trae ninguna, dibuja una portada propia

@@ -12,7 +12,6 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
     override fun load(): AppSettings = AppSettings(
         mode = runCatching { ThemeMode.valueOf(prefs.getString("modo", null) ?: "") }
             .getOrDefault(AppSettings().mode),
-        youTubeKey = prefs.getString("llave_youtube", null).orEmpty(),
         librarySort = runCatching { LibrarySort.valueOf(prefs.getString("orden", null) ?: "") }
             .getOrDefault(AppSettings().librarySort),
     )
@@ -20,7 +19,8 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
     override fun save(settings: AppSettings) {
         prefs.edit()
             .putString("modo", settings.mode.name)
-            .putString("llave_youtube", settings.youTubeKey)
+            // La llave de YouTube de versiones anteriores ya no se usa; se borra del celular.
+            .remove("llave_youtube")
             .putString("orden", settings.librarySort.name)
             .apply()
     }

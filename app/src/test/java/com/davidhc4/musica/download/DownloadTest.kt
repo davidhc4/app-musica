@@ -143,15 +143,14 @@ class DownloadTest {
     }
 
     @Test
-    fun `no descarga YouTube ni archivos del celular`() = runTest {
+    fun `no descarga archivos que ya estan en el celular`() = runTest {
         val (downloads, mediator) = setup(mediatorScope())
 
-        mediator.post(AppEvent.DownloadTrack(Track(id = "youtube:a", title = "a", uri = "youtube:a")))
         mediator.post(AppEvent.DownloadTrack(Track(id = "local", title = "b", uri = "content://media/1")))
         advanceUntilIdle()
 
         assertEquals(0, fetches)
-        assertFalse(canDownload(Track(id = "youtube:a", title = "a", uri = "youtube:a")))
+        assertFalse(canDownload(Track(id = "local", title = "b", uri = "content://media/1")))
         assertTrue(downloads.state.value.tracks.isEmpty())
     }
 

@@ -1,5 +1,7 @@
 package com.davidhc4.musica.core
 
+import com.davidhc4.musica.queue.RepeatMode
+
 data class Track(
     val id: String,
     val title: String,
@@ -42,7 +44,13 @@ sealed interface AppEvent {
     data class RemoveFromQueue(val index: Int) : AppEvent
 
     // Retomar lo que se estaba oyendo
-    data class RestoreQueue(val tracks: List<Track>, val index: Int, val positionMs: Long) : AppEvent
+    data class RestoreQueue(
+        val tracks: List<Track>,
+        val index: Int,
+        val positionMs: Long,
+        val shuffle: Boolean = false,
+        val repeat: RepeatMode = RepeatMode.OFF,
+    ) : AppEvent
     data object SaveSession : AppEvent
 
     // Biblioteca
@@ -68,7 +76,6 @@ sealed interface AppEvent {
     data class SetThemeMode(val mode: ThemeMode) : AppEvent
 
     // Fuentes de música
-    data class SetYouTubeKey(val key: String) : AppEvent
     data class SetLibrarySort(val sort: LibrarySort) : AppEvent
 
     // Actualizaciones de la app
@@ -82,7 +89,12 @@ sealed interface AppEvent {
         val autoPlay: Boolean = true,
         val startPositionMs: Long = 0L,
     ) : AppEvent
-    data class QueueChanged(val tracks: List<Track>, val currentIndex: Int) : AppEvent
+    data class QueueChanged(
+        val tracks: List<Track>,
+        val currentIndex: Int,
+        val shuffle: Boolean = false,
+        val repeat: RepeatMode = RepeatMode.OFF,
+    ) : AppEvent
     data class PlaybackStateChanged(val isPlaying: Boolean) : AppEvent
     data object TrackEnded : AppEvent
     data object TrackFailed : AppEvent

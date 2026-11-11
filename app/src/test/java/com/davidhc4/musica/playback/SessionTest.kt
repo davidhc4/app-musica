@@ -6,6 +6,7 @@ import com.davidhc4.musica.core.EventMediator
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.mediatorScope
 import com.davidhc4.musica.queue.QueueColleague
+import com.davidhc4.musica.queue.RepeatMode
 import com.davidhc4.musica.queue.Session
 import com.davidhc4.musica.queue.SessionColleague
 import com.davidhc4.musica.queue.SessionStore
@@ -84,6 +85,25 @@ class SessionTest {
     }
 
     @Test
+    fun `recuerda el aleatorio y el repetir`() = runTest {
+        val s = Setup(this, MemorySession())
+        s.mediator.post(AppEvent.AppStarted)
+        s.mediator.post(AppEvent.PlayTracks(songs, 0))
+        s.mediator.post(AppEvent.CycleRepeat)
+        s.mediator.post(AppEvent.ToggleShuffle)
+        advanceUntilIdle()
+        val saved = s.store.stored!!
+        assertEquals(RepeatMode.ALL, saved.repeat)
+        assertEquals(true, saved.shuffle)
+
+        val again = Setup(this, MemorySession(saved))
+        again.mediator.post(AppEvent.AppStarted)
+        advanceUntilIdle()
+        assertEquals(RepeatMode.ALL, again.queue.state.value.repeat)
+        assertEquals(true, again.queue.state.value.shuffle)
+    }
+
+    @Test
     fun `sin nada guardado no restaura nada`() = runTest {
         val s = Setup(this, MemorySession())
         s.mediator.post(AppEvent.AppStarted)
@@ -119,7 +139,7 @@ class SessionTest {
 
     @Test
     fun `la sesion se guarda y se lee igual`() {
-        val session = Session(songs, 2, 12_345L)
+        val session = Session(songs, 2, 12_345L, shuffle = true, repeat = RepeatMode.ONE)
         assertEquals(session, sessionFromJson(sessionToJson(session)))
     }
 }

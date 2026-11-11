@@ -55,11 +55,18 @@ class LikesTest {
     }
 
     @Test
-    fun `la caratula de YouTube sale del video y las demas de su direccion`() {
-        val yt = Track(id = "youtube:abcdefghijk", title = "x", uri = "youtube:abcdefghijk", artworkUrl = "https://i/viejo.jpg")
-        assertEquals("https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg", artworkUrls(yt).first())
-        assertEquals("https://i/viejo.jpg", artworkUrls(yt).last())
-        assertEquals(listOf("https://a/c.jpg"), artworkUrls(song("a").copy(artworkUrl = "https://a/c.jpg")))
+    fun `las canciones de YouTube guardadas antes se descartan al abrir`() = runTest {
+        val old = Track(id = "youtube:abcdefghijk", title = "x", uri = "youtube:abcdefghijk")
+        val store = MemoryStore(listOf(old, song("a")))
+        val likes = LikesColleague(store)
+        val mediator = EventMediator(mediatorScope(), listOf(likes))
+
+        mediator.post(AppEvent.AppStarted)
+        advanceUntilIdle()
+
+        assertEquals(listOf("a"), likes.state.value.tracks.map { it.id })
         assertTrue(artworkUrls(song("a")).isEmpty())
+        assertEquals(listOf("https://a/c.jpg"), artworkUrls(song("a").copy(artworkUrl = "https://a/c.jpg")))
     }
+}
 }

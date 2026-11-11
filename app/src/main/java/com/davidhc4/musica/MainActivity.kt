@@ -19,7 +19,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.davidhc4.musica.core.AppEvent
-import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.ui.MusicaRoot
 import com.davidhc4.musica.ui.MusicaTheme
 import com.davidhc4.musica.ui.isDarkTheme
@@ -35,7 +34,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as MusicaApp
-        app.youtube.useScreen(this)
         playback = MediaController.Builder(
             this,
             SessionToken(this, ComponentName(this, PlaybackService::class.java)),
@@ -64,34 +62,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        // Solo se suelta si esta pantalla sigue siendo la que usa el video (no una más nueva).
-        if (isFinishing) (application as MusicaApp).youtube.useScreen(null)
         playback?.let { MediaController.releaseFuture(it) }
         playback = null
         super.onDestroy()
     }
 
-    // Si una canción de YouTube estaba sonando al salir, se reanuda sola al volver.
-    private var resumeOnReturn = false
-
-    override fun onStart() {
-        super.onStart()
-        val app = application as MusicaApp
-        app.youtube.onScreenShown()
-        if (resumeOnReturn) {
-            resumeOnReturn = false
-            app.mediator.post(AppEvent.Resume)
-        }
-    }
-
     override fun onStop() {
         super.onStop()
-        // YouTube solo permite reproducir mientras el video se ve, así que se pausa al salir.
         val app = application as MusicaApp
-        if (isYouTubeUri(app.player.state.value.track?.uri)) {
-            resumeOnReturn = app.player.state.value.isPlaying
-            app.youtube.onScreenHidden()
-        }
         // Se anota por dónde iba la canción, para retomarla si Android cierra la app.
         app.mediator.post(AppEvent.SaveSession)
     }

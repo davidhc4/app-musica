@@ -165,7 +165,6 @@ fun MiniPlayer(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
-    videoSlot: (@Composable (Modifier) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -179,13 +178,7 @@ fun MiniPlayer(
             modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(44.dp)) {
-                TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.fillMaxSize())
-                // El reproductor de YouTube debe seguir a la vista: queda como miniatura en la esquina.
-                if (videoSlot != null) {
-                    videoSlot(Modifier.align(Alignment.BottomEnd).size(width = 24.dp, height = 14.dp))
-                }
-            }
+            TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.size(44.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(

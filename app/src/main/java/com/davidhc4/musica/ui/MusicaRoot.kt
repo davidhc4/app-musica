@@ -5,6 +5,10 @@ import android.content.pm.PackageManager
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.os.Build
+import android.provider.Settings
+import android.os.PowerManager
+import android.net.Uri
+import android.content.Context
 import android.widget.Toast
 import com.davidhc4.musica.library.newDeviceTracks
 import com.davidhc4.musica.library.scanDeviceMusic
@@ -36,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import com.davidhc4.musica.MusicaApp
 import com.davidhc4.musica.core.AppEvent
@@ -44,7 +47,6 @@ import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.readTrack
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.PlayerState
-import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.update.UpdateStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -86,6 +88,20 @@ fun MusicaRoot(app: MusicaApp) {
     val downloads by app.downloads.state.collectAsState()
     val playlists by app.playlists.state.collectAsState()
     val sleep by app.sleepTimer.state.collectAsState()
+
+    // Si Android tiene permitido dejar la app viva con la pantalla apagada (sin ahorro de batería).
+    val power = remember { context.getSystemService(Context.POWER_SERVICE) as PowerManager }
+    var backgroundAllowed by remember { mutableStateOf(power.isIgnoringBatteryOptimizations(context.packageName)) }
+    val batterySettings = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        backgroundAllowed = power.isIgnoringBatteryOptimizations(context.packageName)
+    }
+    val allowBackground: () -> Unit = {
+        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+        runCatching { batterySettings.launch(direct) }.onFailure {
+            // Algunos celulares no tienen esa pantalla directa; se abre la lista general.
+            runCatching { batterySettings.launch(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        }
+    }
 
     // Diálogo abierto desde el menú del panel: "sleep", "speed" o ninguno.
     var dialog by remember { mutableStateOf<String?>(null) }
@@ -185,14 +201,6 @@ fun MusicaRoot(app: MusicaApp) {
     }
 
     val currentTrack = player.track
-    // El video de YouTube va en una sola vista que se coloca sobre el hueco del panel o del mini reproductor.
-    val isVideo = isYouTubeUri(currentTrack?.uri)
-    var panelVideoBounds by remember { mutableStateOf<Rect?>(null) }
-    var miniVideoBounds by remember { mutableStateOf<Rect?>(null) }
-    val miniSlot: (@Composable (Modifier) -> Unit)? =
-        if (isVideo) ({ m -> VideoSlot(m) { miniVideoBounds = it } }) else null
-    val panelSlot: (@Composable (Modifier) -> Unit)? =
-        if (isVideo) ({ m -> VideoSlot(m) { panelVideoBounds = it } }) else null
     BackHandler(enabled = playerOpen) { playerOpen = false }
 
     Box(
@@ -249,7 +257,8 @@ fun MusicaRoot(app: MusicaApp) {
                         },
                         update = update,
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
-                        onYouTubeKey = { app.mediator.post(AppEvent.SetYouTubeKey(it)) },
+                        backgroundAllowed = backgroundAllowed,
+                        onAllowBackground = allowBackground,
                         onCheckUpdates = { app.mediator.post(AppEvent.CheckForUpdates) },
                         onInstallUpdate = { app.mediator.post(AppEvent.InstallUpdate) },
                     )
@@ -267,7 +276,6 @@ fun MusicaRoot(app: MusicaApp) {
                         app.mediator.post(if (player.isPlaying) AppEvent.Pause else AppEvent.Resume)
                     },
                     onNext = { app.mediator.post(AppEvent.Next) },
-                    videoSlot = miniSlot,
                 )
             }
             BottomBar(selected = tab, onSelect = { tab = it })
@@ -293,7 +301,6 @@ fun MusicaRoot(app: MusicaApp) {
                     onSeek = { fraction ->
                         app.mediator.post(AppEvent.SeekTo((fraction * progress.durationMs).toLong()))
                     },
-                    videoSlot = panelSlot,
                     liked = currentTrack.id in likes.ids,
                     onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
                     queue = queue,
@@ -305,8 +312,7 @@ fun MusicaRoot(app: MusicaApp) {
                             }
                         )
                         add(MenuAction("Velocidad · ${speedLabel(player.speed)}") { dialog = "speed" })
-                        // El ecualizador del celular solo actúa sobre el audio propio, no sobre YouTube.
-                        if (!isVideo && hasEqualizer) add(MenuAction("Ecualizador") { openEqualizer() })
+                        if (hasEqualizer) add(MenuAction("Ecualizador") { openEqualizer() })
                     },
                     onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
@@ -317,19 +323,6 @@ fun MusicaRoot(app: MusicaApp) {
                     onDownload = { toggleDownload(currentTrack) },
                 )
             }
-        }
-
-        val videoBounds = when {
-            !isVideo -> null
-            playerOpen -> panelVideoBounds ?: miniVideoBounds
-            else -> miniVideoBounds
-        }
-        if (videoBounds != null) {
-            VideoOverlay(
-                view = app.youtube.view,
-                bounds = videoBounds,
-                interactive = playerOpen && panelVideoBounds != null,
-            )
         }
 
         when (dialog) {

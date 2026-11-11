@@ -8,19 +8,18 @@ Ya puedes:
 
 - Agregar canciones de tu celular a una biblioteca que se guarda entre sesiones
 - Buscar música en línea (Audius, y Jamendo cuando se active) y oír canciones completas al instante, sin tenerlas en el celular; artistas verificados y las más escuchadas primero; guardar las que te gusten en tu biblioteca
-- Con una llave gratuita de YouTube (Ajustes → YouTube), buscar y oír canciones de artistas conocidos con el reproductor oficial de YouTube: el video se ve mientras suena y se pausa al salir de la app
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
 - Marcar canciones con "me gusta" y encontrarlas en el álbum "Canciones que te gustan"
-- Seguir oyendo tus archivos y la música libre con la pantalla apagada, con controles en la notificación y en la pantalla de bloqueo (las canciones de YouTube se pausan al salir, como exige YouTube)
 - Descargar la música libre (Audius) para oírla sin internet; queda en el álbum "Descargadas"
 - Modo aleatorio, repetir todas o una, y ver la cola para saltar a cualquier canción
 - Crear listas de reproducción propias y agregar canciones desde el reproductor
-- Buscar a la vez en YouTube y en la música libre, y descargar la música libre desde la misma lista
 - Encontrar sola la música guardada en el celular, ordenar la biblioteca y retomar al abrir la app lo que estabas oyendo
 - Menú de opciones en cada canción: reproducir a continuación, agregar a la cola o a una lista, me gusta y descargar
 - Temporizador de apagado, velocidad de reproducción y ecualizador del celular, desde el menú del reproductor
 - Ver la biblioteca por canciones, artistas o álbumes, y cambiar el nombre de las listas
+- Seguir oyendo tu música con la pantalla apagada o fuera de la app, con controles en la notificación y en la pantalla de bloqueo
+- Buscar música libre en línea y descargarla desde la misma lista
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 

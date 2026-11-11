@@ -34,7 +34,7 @@ class PlaylistsColleague(
         val current = _state.value.playlists
         val updated = when (event) {
             is AppEvent.AppStarted -> {
-                _state.value = PlaylistsState(store.load())
+                _state.value = PlaylistsState(store.load().map { it.copy(tracks = it.tracks.playable()) })
                 return
             }
 

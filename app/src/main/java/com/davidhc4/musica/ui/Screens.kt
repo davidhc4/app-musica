@@ -72,7 +72,6 @@ import com.davidhc4.musica.library.searchTracks
 import com.davidhc4.musica.queue.QueueState
 import com.davidhc4.musica.queue.RepeatMode
 import com.davidhc4.musica.search.SearchState
-import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.update.UpdateState
 import com.davidhc4.musica.update.UpdateStatus
 
@@ -189,7 +188,7 @@ fun LibraryScreen(
                 currentId = currentId,
                 artwork = artwork,
                 emptyIcon = AppIcons.Download,
-                emptyMessage = "Aquí queda la música libre que bajes con la flecha de descarga, para oírla sin internet. Las canciones de YouTube no se pueden descargar.",
+                emptyMessage = "Aquí queda la música libre que bajes con la flecha de descarga, para oírla sin internet.",
                 rowIcon = AppIcons.DownloadDone,
                 rowAction = "Quitar la descarga",
                 onBack = { album = null },
@@ -787,8 +786,6 @@ fun SearchScreen(
                     }
                 }
 
-                val fromYouTube = online.filter { isYouTubeUri(it.uri) }
-                val freeMusic = online.filterNot { isYouTubeUri(it.uri) }
                 if (onlineActive && online.isEmpty()) {
                     item(key = "header-online") { ListHeader("En línea") }
                 }
@@ -809,11 +806,7 @@ fun SearchScreen(
                         )
                     }
                 }
-                // Primero YouTube y después la música libre, que es la que se puede descargar.
-                listOf(
-                    "En YouTube" to fromYouTube,
-                    "Música libre · se puede descargar" to freeMusic,
-                ).forEach { (title, group) ->
+                listOf("Música libre · se puede descargar" to online).forEach { (title, group) ->
                     if (group.isEmpty()) return@forEach
                     item(key = "header:$title") { ListHeader(title) }
                     itemsIndexed(group, key = { _, track -> "online:${track.id}" }) { index, track ->
@@ -871,7 +864,8 @@ fun SettingsScreen(
     versionName: String,
     update: UpdateState,
     onMode: (ThemeMode) -> Unit,
-    onYouTubeKey: (String) -> Unit,
+    backgroundAllowed: Boolean = true,
+    onAllowBackground: () -> Unit = {},
     onCheckUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
@@ -916,8 +910,8 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-            SectionLabel("YouTube")
-            YouTubeKeySection(settings.youTubeKey, onYouTubeKey)
+            SectionLabel("Música en segundo plano")
+            BackgroundSection(backgroundAllowed, onAllowBackground)
 
             Spacer(Modifier.height(16.dp))
             SectionLabel("Actualizaciones")
@@ -947,48 +941,27 @@ fun SettingsScreen(
     }
 }
 
+/** Explica si Android deja a la app seguir sonando con la pantalla apagada, y cómo permitirlo. */
 @Composable
-private fun YouTubeKeySection(savedKey: String, onKey: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf(savedKey) }
+private fun BackgroundSection(allowed: Boolean, onAllow: () -> Unit) {
     Text(
-        if (savedKey.isBlank()) "Pega aquí tu llave de YouTube para buscar y oír canciones de artistas famosos."
-        else "Llave guardada. La búsqueda usa YouTube; el video se ve mientras suena y se pausa al salir de la app.",
+        if (allowed) {
+            "Permitido: Android no cierra la app para ahorrar batería mientras suena la música."
+        } else {
+            "Android puede cortar la música con la pantalla apagada para ahorrar batería. Toca el botón para permitir que siga sonando."
+        },
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Spacer(Modifier.height(10.dp))
-    TextField(
-        value = text,
-        onValueChange = {
-            text = it.trim()
-            onKey(text)
-        },
-        singleLine = true,
-        placeholder = { Text("Llave de YouTube") },
-        trailingIcon = {
-            if (text.isNotEmpty()) {
-                IconTap(
-                    AppIcons.Close,
-                    "Borrar llave",
-                    {
-                        text = ""
-                        onKey("")
-                    },
-                    size = 40.dp,
-                    iconSize = 20.dp,
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        shape = RoundedCornerShape(28.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-        ),
-        modifier = Modifier.fillMaxWidth(),
+    if (!allowed) {
+        Spacer(Modifier.height(10.dp))
+        PillButton("Permitir música en segundo plano", onAllow, Modifier.fillMaxWidth())
+    }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "En celulares Xiaomi, Redmi o POCO revisa también: Ajustes del celular → Aplicaciones → Música → Ahorro de batería → Sin restricciones.",
+        fontSize = 12.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -1091,7 +1064,6 @@ fun PlayerScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Float) -> Unit,
-    videoSlot: (@Composable (Modifier) -> Unit)? = null,
     liked: Boolean = false,
     onToggleLike: () -> Unit = {},
     download: DownloadStatus = DownloadStatus.NONE,
@@ -1136,10 +1108,6 @@ fun PlayerScreen(
                 fontWeight = FontWeight.SemiBold,
                 color = colors.onSurfaceVariant,
             )
-            if (videoSlot != null) {
-                // YouTube pide que su reproductor siga a la vista mientras suena.
-                videoSlot(Modifier.size(width = 80.dp, height = 45.dp))
-            }
             IconTap(
                 icon = AppIcons.QueueMusic,
                 description = if (showQueue) "Ver la carátula" else "Ver la cola",

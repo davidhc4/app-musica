@@ -7,7 +7,5 @@ enum class LibrarySort { TITLE, ARTIST, RECENT }
 
 data class AppSettings(
     val mode: ThemeMode = ThemeMode.DARK,
-    /** Llave de la API de YouTube. Vacía significa que no se busca en YouTube. */
-    val youTubeKey: String = "",
     val librarySort: LibrarySort = LibrarySort.TITLE,
 )

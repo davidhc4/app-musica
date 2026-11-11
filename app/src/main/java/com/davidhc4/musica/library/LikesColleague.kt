@@ -18,7 +18,7 @@ class LikesColleague(private val store: LibraryStore) : BaseColleague() {
 
     override suspend fun handle(event: AppEvent) {
         when (event) {
-            is AppEvent.AppStarted -> _state.value = LikesState(store.load().distinctBy { it.id })
+            is AppEvent.AppStarted -> _state.value = LikesState(store.load().playable().distinctBy { it.id })
 
             is AppEvent.ToggleLike -> {
                 val current = _state.value.tracks

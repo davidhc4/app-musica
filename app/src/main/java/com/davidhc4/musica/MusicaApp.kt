@@ -17,9 +17,7 @@ import com.davidhc4.musica.library.LikesColleague
 import com.davidhc4.musica.library.PlaylistsColleague
 import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
-import com.davidhc4.musica.player.RoutingEngine
 import com.davidhc4.musica.player.SleepTimerColleague
-import com.davidhc4.musica.player.YouTubeEngine
 import com.davidhc4.musica.queue.FileSessionStore
 import com.davidhc4.musica.queue.QueueColleague
 import com.davidhc4.musica.queue.SessionColleague
@@ -28,9 +26,6 @@ import com.davidhc4.musica.source.AudiusSource
 import com.davidhc4.musica.source.CompositeSource
 import com.davidhc4.musica.source.JamendoConfig
 import com.davidhc4.musica.source.JamendoSource
-import com.davidhc4.musica.source.SectionedSource
-import com.davidhc4.musica.source.YouTubeSource
-import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.settings.PrefsSettingsStore
 import com.davidhc4.musica.settings.SettingsColleague
 import com.davidhc4.musica.ui.ArtworkLoader
@@ -65,8 +60,6 @@ class MusicaApp : Application() {
         private set
     lateinit var audio: Media3Engine
         private set
-    lateinit var youtube: YouTubeEngine
-        private set
     lateinit var updates: UpdateColleague
         private set
     lateinit var artwork: ArtworkLoader
@@ -77,7 +70,6 @@ class MusicaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         queue = QueueColleague()
-        youtube = YouTubeEngine(this)
         audio = Media3Engine(this)
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         downloads = DownloadColleague(
@@ -94,7 +86,7 @@ class MusicaApp : Application() {
             },
         )
         player = PlayerColleague(
-            engine = RoutingEngine(audio, youtube, ::isYouTubeUri),
+            engine = audio,
             // Si la canción está descargada, suena desde el celular y no gasta internet.
             resolve = { track -> downloads.localUri(track.id)?.let { track.copy(uri = it) } ?: track },
         )
@@ -110,17 +102,7 @@ class MusicaApp : Application() {
                 JamendoConfig.CLIENT_ID.takeIf { it.isNotBlank() }?.let { JamendoSource(it) },
             )
         )
-        // Con llave de YouTube salen sus resultados y después la música libre; sin llave, solo la libre.
-        search = SearchColleague(
-            appScope,
-            SectionedSource(
-                primary = YouTubeSource(key = { settings.state.value.youTubeKey }),
-                secondary = freeMusic,
-                primaryEnabled = { settings.state.value.youTubeKey.isNotBlank() },
-            ),
-            // Cada búsqueda en YouTube gasta cupo, así que se espera un poco más a que termines de escribir.
-            debounceMs = 600L,
-        )
+        search = SearchColleague(appScope, freeMusic)
         updates = UpdateColleague(
             scope = appScope,
             service = GitHubUpdateService(File(cacheDir, "actualizaciones")),

@@ -21,7 +21,7 @@ data class DownloadsState(
     val ids: Set<String> = tracks.map { it.id }.toSet()
 }
 
-/** Solo se puede descargar lo que viene de internet por una dirección directa (no YouTube). */
+/** Solo se puede descargar lo que viene de internet por una dirección directa (no archivos del celular). */
 fun canDownload(track: Track): Boolean =
     track.uri.startsWith("https://") || track.uri.startsWith("http://")
 

@@ -43,3 +43,9 @@ private fun groupTracks(tracks: List<Track>, unknown: String, key: (Track) -> St
         .sortedBy { it.name.normalized() }
     return if (unnamed.isEmpty()) groups else groups + TrackGroup(unknown, unnamed)
 }
+
+/**
+ * Quita las canciones guardadas por versiones anteriores que venían de YouTube: la app ya no las
+ * puede reproducir.
+ */
+fun List<Track>.playable(): List<Track> = filterNot { it.uri.startsWith("youtube:") }

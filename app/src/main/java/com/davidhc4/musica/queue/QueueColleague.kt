@@ -120,7 +120,14 @@ class QueueColleague(
             is AppEvent.RestoreQueue -> {
                 if (event.tracks.isEmpty() || s.current != null) return
                 ordered = event.tracks
-                update(s.copy(tracks = ordered, currentIndex = event.index.coerceIn(0, ordered.lastIndex)))
+                update(
+                    s.copy(
+                        tracks = ordered,
+                        currentIndex = event.index.coerceIn(0, ordered.lastIndex),
+                        shuffle = event.shuffle,
+                        repeat = event.repeat,
+                    )
+                )
                 mediator.post(
                     AppEvent.CurrentTrackChanged(_state.value.current, autoPlay = false, startPositionMs = event.positionMs)
                 )
@@ -175,6 +182,6 @@ class QueueColleague(
 
     private fun update(new: QueueState) {
         _state.value = new
-        mediator.post(AppEvent.QueueChanged(new.tracks, new.currentIndex))
+        mediator.post(AppEvent.QueueChanged(new.tracks, new.currentIndex, new.shuffle, new.repeat))
     }
 }

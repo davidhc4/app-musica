@@ -39,7 +39,7 @@ class LibraryColleague(private val store: LibraryStore) : BaseColleague() {
     override suspend fun handle(event: AppEvent) {
         when (event) {
             is AppEvent.AppStarted -> {
-                added = store.load()
+                added = store.load().playable()
                 _state.value = LibraryState(sorted(added), loaded = true, recent = added.reversed())
             }
 
