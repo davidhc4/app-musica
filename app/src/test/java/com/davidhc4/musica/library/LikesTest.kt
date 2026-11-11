@@ -69,4 +69,3 @@ class LikesTest {
         assertEquals(listOf("https://a/c.jpg"), artworkUrls(song("a").copy(artworkUrl = "https://a/c.jpg")))
     }
 }
-}
