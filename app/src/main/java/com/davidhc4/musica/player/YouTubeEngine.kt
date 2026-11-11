@@ -40,6 +40,31 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
     @Volatile private var position = 0L
     @Volatile private var duration = 0L
 
+    // Verdadero mientras la app no está a la vista. En ese rato se ignora lo que avise la página,
+    // para que nunca cambie de canción ni de estado con la pantalla apagada.
+    private var suspended = false
+
+    private val freeze = Runnable { if (suspended && created) view.onPause() }
+
+    /** La app dejó de verse: YouTube exige parar. Se pausa y se congela la vista del video. */
+    fun onScreenHidden() {
+        if (!created || suspended) return
+        suspended = true
+        wantsToPlay = false
+        run("player.pauseVideo()")
+        listener?.onIsPlayingChanged(false)
+        // Se le da un instante a la pausa para llegar a la página antes de congelarla.
+        main.postDelayed(freeze, 400L)
+    }
+
+    /** La app volvió a verse: la vista del video despierta en el mismo punto. */
+    fun onScreenShown() {
+        if (!created || !suspended) return
+        main.removeCallbacks(freeze)
+        view.onResume()
+        suspended = false
+    }
+
     /** La vista del video. Se crea la primera vez que hace falta, para no gastar memoria antes. */
     val view: WebView by lazy { createView() }
 
@@ -125,7 +150,7 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
 
         @JavascriptInterface
         fun onState(state: Int) = main.post {
-            if (videoId == null) return@post
+            if (videoId == null || suspended) return@post
             when (state) {
                 1 -> listener?.onIsPlayingChanged(true)
                 2 -> listener?.onIsPlayingChanged(false)
@@ -145,7 +170,7 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
 
         @JavascriptInterface
         fun onError(code: Int) = main.post {
-            if (videoId == null) return@post
+            if (videoId == null || suspended) return@post
             listener?.onIsPlayingChanged(false)
             listener?.onError(
                 if (code == 101 || code == 150) "El dueño de este video no deja reproducirlo fuera de YouTube"
