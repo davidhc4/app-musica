@@ -102,6 +102,58 @@ class DownloadTest {
     }
 
     @Test
+    fun `con el tope lleno no descarga y si una cancion no cabe no la guarda`() = runTest {
+        val scope = mediatorScope()
+        var limit = 8L // Cada descarga de prueba ocupa 5 bytes ("audio").
+        val errors = mutableListOf<String>()
+        val downloads = DownloadColleague(scope, MemoryIndex(), folder.root, fetch, limitBytes = { limit })
+        val mediator = EventMediator(
+            scope,
+            listOf(downloads, object : com.davidhc4.musica.core.BaseColleague() {
+                override suspend fun handle(event: AppEvent) {
+                    if (event is AppEvent.ErrorOccurred) errors += event.message
+                }
+            }),
+        )
+
+        mediator.post(AppEvent.DownloadTrack(online("a")))
+        advanceUntilIdle()
+        assertEquals(5L, downloads.state.value.usedBytes)
+
+        // La segunda cabe a medias: se baja, se ve que se pasa del tope y se descarta.
+        mediator.post(AppEvent.DownloadTrack(online("b")))
+        advanceUntilIdle()
+        assertEquals(listOf("audius:a"), downloads.state.value.tracks.map { it.id })
+        assertEquals(1, errors.size)
+        assertEquals(1, folder.root.listFiles().orEmpty().size)
+
+        // Con el tope ya alcanzado ni siquiera se intenta.
+        limit = 5L
+        val before = fetches
+        mediator.post(AppEvent.DownloadTrack(online("c")))
+        advanceUntilIdle()
+        assertEquals(before, fetches)
+        assertEquals(2, errors.size)
+    }
+
+    @Test
+    fun `borrar todas las descargas deja el celular limpio`() = runTest {
+        val index = MemoryIndex()
+        val (downloads, mediator) = setup(mediatorScope(), index)
+
+        mediator.post(AppEvent.DownloadTrack(online("a")))
+        mediator.post(AppEvent.DownloadTrack(online("b")))
+        advanceUntilIdle()
+        mediator.post(AppEvent.ClearDownloads)
+        advanceUntilIdle()
+
+        assertTrue(downloads.state.value.tracks.isEmpty())
+        assertEquals(0L, downloads.state.value.usedBytes)
+        assertTrue(index.stored.isEmpty())
+        assertTrue(folder.root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test
     fun `tocar descargar varias veces baja una sola vez`() = runTest {
         val (_, mediator) = setup(mediatorScope())
 

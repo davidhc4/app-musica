@@ -14,6 +14,7 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
             .getOrDefault(AppSettings().mode),
         librarySort = runCatching { LibrarySort.valueOf(prefs.getString("orden", null) ?: "") }
             .getOrDefault(AppSettings().librarySort),
+        downloadLimitMb = prefs.getInt("limite_descargas", 0),
     )
 
     override fun save(settings: AppSettings) {
@@ -22,6 +23,7 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
             // La llave de YouTube de versiones anteriores ya no se usa; se borra del celular.
             .remove("llave_youtube")
             .putString("orden", settings.librarySort.name)
+            .putInt("limite_descargas", settings.downloadLimitMb)
             .apply()
     }
 }

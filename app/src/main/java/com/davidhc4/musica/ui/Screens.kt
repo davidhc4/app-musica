@@ -111,6 +111,7 @@ fun LibraryScreen(
     onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
+    onDownloadAll: (List<Track>) -> Unit = {},
     sort: LibrarySort = LibrarySort.TITLE,
     onSort: (LibrarySort) -> Unit = {},
     onScanDevice: () -> Unit = {},
@@ -149,6 +150,7 @@ fun LibraryScreen(
                 onBack = { album = null },
                 onPlay = onPlay,
                 menuFor = menuFor,
+                onDownloadAll = onDownloadAll,
                 onRowAction = { onRemoveFromPlaylist(openList.id, it) },
             )
         } else if (openGroup != null) {
@@ -179,6 +181,7 @@ fun LibraryScreen(
                 onBack = { album = null },
                 onPlay = onPlay,
                 menuFor = menuFor,
+                onDownloadAll = onDownloadAll,
                 onRowAction = onToggleLike,
             )
         } else {
@@ -620,6 +623,7 @@ private fun AlbumScreen(
     onPlay: (List<Track>, Int) -> Unit,
     onRowAction: (Track) -> Unit,
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
+    onDownloadAll: ((List<Track>) -> Unit)? = null,
 ) {
     val liked = tracks
     // Botón propio de cada fila (quitar me gusta, quitar descarga...). Algunas listas no tienen.
@@ -653,6 +657,10 @@ private fun AlbumScreen(
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            // Baja de una vez toda la música en línea de esta lista, para oírla sin internet.
+            if (onDownloadAll != null && tracks.any { canDownload(it) }) {
+                IconTap(AppIcons.Download, "Descargar todas", { onDownloadAll(tracks) })
             }
         }
 
@@ -866,6 +874,9 @@ fun SettingsScreen(
     onMode: (ThemeMode) -> Unit,
     backgroundAllowed: Boolean = true,
     onAllowBackground: () -> Unit = {},
+    downloads: DownloadsState = DownloadsState(),
+    onDownloadLimit: (Int) -> Unit = {},
+    onClearDownloads: () -> Unit = {},
     onCheckUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
@@ -914,6 +925,10 @@ fun SettingsScreen(
             BackgroundSection(backgroundAllowed, onAllowBackground)
 
             Spacer(Modifier.height(16.dp))
+            SectionLabel("Descargas")
+            DownloadsSection(downloads, settings.downloadLimitMb, onDownloadLimit, onClearDownloads)
+
+            Spacer(Modifier.height(16.dp))
             SectionLabel("Actualizaciones")
             UpdateSection(update, onCheckUpdates, onInstallUpdate)
 
@@ -938,6 +953,77 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+private fun sizeLabel(megabytes: Int): String = when {
+    megabytes <= 0 -> "Sin límite"
+    megabytes >= 1024 && megabytes % 1024 == 0 -> "${megabytes / 1024} GB"
+    else -> "$megabytes MB"
+}
+
+private fun usedLabel(bytes: Long): String {
+    val megabytes = bytes / (1024.0 * 1024.0)
+    return if (megabytes >= 1024) String.format(java.util.Locale.US, "%.1f GB", megabytes / 1024).replace('.', ',')
+    else "${megabytes.toInt()} MB"
+}
+
+/** Cuánto ocupan las descargas, el tope de espacio y el botón para borrarlas todas. */
+@Composable
+private fun DownloadsSection(
+    downloads: DownloadsState,
+    limitMb: Int,
+    onLimit: (Int) -> Unit,
+    onClear: () -> Unit,
+) {
+    var choosing by remember { mutableStateOf(false) }
+    var confirming by remember { mutableStateOf(false) }
+    val count = downloads.tracks.size
+
+    Text(
+        (if (count == 1) "1 canción descargada" else "$count canciones descargadas") +
+            " · ocupan ${usedLabel(downloads.usedBytes)}" +
+            (if (limitMb > 0) " de ${sizeLabel(limitMb)}" else ""),
+        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(10.dp))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { choosing = true }
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("Límite de espacio: ${sizeLabel(limitMb)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+    if (count > 0) {
+        TextButton(onClick = { confirming = true }) { Text("Borrar todas las descargas") }
+    }
+
+    if (choosing) {
+        ChoiceDialog(
+            title = "Límite de espacio para descargas",
+            options = listOf(0, 500, 1024, 2048, 5120).map { mb -> sizeLabel(mb) to { onLimit(mb) } },
+            selected = sizeLabel(limitMb),
+            onDismiss = { choosing = false },
+        )
+    }
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text("Borrar todas las descargas") },
+            text = { Text("Se borran del celular las $count canciones descargadas. Siguen en tu biblioteca y en tus listas, pero necesitarán internet para sonar.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClear()
+                    confirming = false
+                }) { Text("Borrar") }
+            },
+            dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancelar") } },
+        )
     }
 }
 

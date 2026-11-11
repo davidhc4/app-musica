@@ -2,6 +2,8 @@ package com.davidhc4.musica
 
 import android.app.Application
 import android.util.Log
+import android.widget.Toast
+import com.davidhc4.musica.core.BaseColleague
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.core.EventMediator
 import com.davidhc4.musica.core.Mediator
@@ -79,6 +81,7 @@ class MusicaApp : Application() {
             fetch = { url, target, onProgress ->
                 withContext(Dispatchers.IO) { httpDownload(url, target, onProgress = onProgress) }
             },
+            limitBytes = { settings.state.value.downloadLimitMb * 1024L * 1024L },
             saveArtwork = { track, target ->
                 withContext(Dispatchers.IO) {
                     artworkUrls(track).firstOrNull()?.let { target.writeBytes(httpGetBytes(it)) }
@@ -115,9 +118,17 @@ class MusicaApp : Application() {
         )
         sleepTimer = SleepTimerColleague(appScope)
         val session = SessionColleague(FileSessionStore(File(filesDir, "sesion.json"))) { player.positionMs() }
+        // Muestra en pantalla los avisos de los componentes (una canción que falló, una descarga que no cabe).
+        val notices = object : BaseColleague() {
+            override suspend fun handle(event: AppEvent) {
+                if (event is AppEvent.ErrorOccurred) {
+                    Toast.makeText(this@MusicaApp, event.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, sleepTimer, session, library, likes, playlists, downloads, settings, search, updates),
+            colleagues = listOf(queue, player, sleepTimer, session, library, likes, playlists, downloads, settings, search, updates, notices),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

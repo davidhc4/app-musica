@@ -214,6 +214,9 @@ fun MusicaRoot(app: MusicaApp) {
                     0 -> LibraryScreen(
                         tracks = remember(library, settings.librarySort) { sortLibrary(library, settings.librarySort) },
                         menuFor = menuFor,
+                        onDownloadAll = { tracks ->
+                            tracks.forEach { app.mediator.post(AppEvent.DownloadTrack(it)) }
+                        },
                         sort = settings.librarySort,
                         onSort = { app.mediator.post(AppEvent.SetLibrarySort(it)) },
                         onScanDevice = findDeviceMusic,
@@ -257,6 +260,9 @@ fun MusicaRoot(app: MusicaApp) {
                         },
                         update = update,
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
+                        downloads = downloads,
+                        onDownloadLimit = { app.mediator.post(AppEvent.SetDownloadLimit(it)) },
+                        onClearDownloads = { app.mediator.post(AppEvent.ClearDownloads) },
                         backgroundAllowed = backgroundAllowed,
                         onAllowBackground = allowBackground,
                         onCheckUpdates = { app.mediator.post(AppEvent.CheckForUpdates) },

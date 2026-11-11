@@ -17,6 +17,8 @@ data class DownloadsState(
     val tracks: List<Track> = emptyList(),
     /** Descargas en curso: avance entre 0 y 1 por canción. */
     val inProgress: Map<String, Float> = emptyMap(),
+    /** Espacio que ocupan las descargas en el celular, en bytes. */
+    val usedBytes: Long = 0L,
 ) {
     val ids: Set<String> = tracks.map { it.id }.toSet()
 }
@@ -36,6 +38,8 @@ class DownloadColleague(
     private val fetch: suspend (url: String, target: File, onProgress: (Float) -> Unit) -> Unit,
     /** Guarda la carátula de la canción en el archivo indicado, para verla también sin internet. */
     private val saveArtwork: suspend (track: Track, target: File) -> Unit = { _, _ -> },
+    /** Tope de espacio para las descargas, en bytes. Cero significa sin límite. */
+    private val limitBytes: () -> Long = { 0L },
 ) : BaseColleague() {
 
     private val _state = MutableStateFlow(DownloadsState())
@@ -55,7 +59,15 @@ class DownloadColleague(
             is AppEvent.AppStarted -> {
                 // Si alguien borró un archivo por fuera, esa canción deja de contar como descargada.
                 val present = index.load().distinctBy { it.id }.filter { fileFor(it.id).exists() }
-                _state.value = _state.value.copy(tracks = present)
+                _state.value = _state.value.copy(tracks = present, usedBytes = used())
+            }
+
+            is AppEvent.ClearDownloads -> {
+                jobs.values.toList().forEach { it.cancel() }
+                jobs.clear()
+                dir.listFiles()?.forEach { it.delete() }
+                _state.value = DownloadsState()
+                index.save(emptyList())
             }
 
             is AppEvent.DownloadTrack -> start(event.track)
@@ -69,6 +81,7 @@ class DownloadColleague(
                 _state.value = s.copy(
                     tracks = s.tracks.filter { it.id != event.trackId },
                     inProgress = s.inProgress - event.trackId,
+                    usedBytes = used(),
                 )
                 index.save(_state.value.tracks)
             }
@@ -80,6 +93,11 @@ class DownloadColleague(
     private fun start(track: Track) {
         val id = track.id
         if (!canDownload(track) || id in _state.value.ids || id in jobs) return
+        val limit = limitBytes()
+        if (limit > 0L && used() >= limit) {
+            mediator.post(AppEvent.ErrorOccurred("Llegaste al límite de espacio para descargas. Súbelo en Ajustes o borra algunas."))
+            return
+        }
         _state.value = _state.value.copy(inProgress = _state.value.inProgress + (id to 0f))
         jobs[id] = scope.launch {
             val part = partFor(id)
@@ -98,8 +116,16 @@ class DownloadColleague(
                 } catch (_: Exception) {
                     artFor(id).delete()
                 }
+                // El tamaño solo se conoce al terminar: si con esta canción se pasa del tope, no se guarda.
+                if (limit > 0L && used() > limit) {
+                    fileFor(id).delete()
+                    artFor(id).delete()
+                    _state.value = _state.value.copy(inProgress = _state.value.inProgress - id)
+                    mediator.post(AppEvent.ErrorOccurred("“${track.title}” no cabe en el espacio reservado para descargas"))
+                    return@launch
+                }
                 val s = _state.value
-                _state.value = s.copy(tracks = listOf(track) + s.tracks, inProgress = s.inProgress - id)
+                _state.value = s.copy(tracks = listOf(track) + s.tracks, inProgress = s.inProgress - id, usedBytes = used())
                 index.save(_state.value.tracks)
             } catch (e: CancellationException) {
                 part.delete()
@@ -113,6 +139,10 @@ class DownloadColleague(
             }
         }
     }
+
+    /** Bytes que ocupan los archivos ya descargados (sin contar los que van a medias). */
+    private fun used(): Long =
+        dir.listFiles()?.filterNot { it.name.endsWith(".tmp") }?.sumOf { it.length() } ?: 0L
 
     private fun safeName(trackId: String) = trackId.replace(Regex("[^A-Za-z0-9_-]"), "_")
 

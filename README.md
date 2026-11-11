@@ -20,6 +20,7 @@ Ya puedes:
 - Ver la biblioteca por canciones, artistas o álbumes, y cambiar el nombre de las listas
 - Seguir oyendo tu música con la pantalla apagada o fuera de la app, con controles en la notificación y en la pantalla de bloqueo
 - Buscar música libre en línea y descargarla desde la misma lista
+- Poner un límite de espacio a las descargas, ver cuánto ocupan y borrarlas todas desde Ajustes
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 

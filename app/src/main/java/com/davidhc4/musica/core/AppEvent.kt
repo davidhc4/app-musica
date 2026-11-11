@@ -68,6 +68,9 @@ sealed interface AppEvent {
     // Descargas para oír sin internet
     data class DownloadTrack(val track: Track) : AppEvent
     data class RemoveDownload(val trackId: String) : AppEvent
+    data object ClearDownloads : AppEvent
+    /** Tope de espacio para las descargas, en megas. Cero significa sin límite. */
+    data class SetDownloadLimit(val megabytes: Int) : AppEvent
 
     // Búsqueda en línea
     data class SearchRequested(val query: String) : AppEvent

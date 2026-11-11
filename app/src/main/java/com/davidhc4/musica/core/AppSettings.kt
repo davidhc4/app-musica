@@ -8,4 +8,6 @@ enum class LibrarySort { TITLE, ARTIST, RECENT }
 data class AppSettings(
     val mode: ThemeMode = ThemeMode.DARK,
     val librarySort: LibrarySort = LibrarySort.TITLE,
+    /** Tope de espacio para las descargas, en megas. Cero significa sin límite. */
+    val downloadLimitMb: Int = 0,
 )
