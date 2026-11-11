@@ -7,6 +7,7 @@ import com.davidhc4.musica.core.EventMediator
 import com.davidhc4.musica.core.Mediator
 import com.davidhc4.musica.library.FileLibraryStore
 import com.davidhc4.musica.library.LibraryColleague
+import com.davidhc4.musica.library.LikesColleague
 import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.RoutingEngine
@@ -40,6 +41,8 @@ class MusicaApp : Application() {
         private set
     lateinit var library: LibraryColleague
         private set
+    lateinit var likes: LikesColleague
+        private set
     lateinit var settings: SettingsColleague
         private set
     lateinit var search: SearchColleague
@@ -59,6 +62,7 @@ class MusicaApp : Application() {
         youtube = YouTubeEngine(this)
         player = PlayerColleague(RoutingEngine(Media3Engine(this), youtube, ::isYouTubeUri))
         library = LibraryColleague(FileLibraryStore(File(filesDir, "biblioteca.json")))
+        likes = LikesColleague(FileLibraryStore(File(filesDir, "megusta.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -91,7 +95,7 @@ class MusicaApp : Application() {
         )
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, library, settings, search, updates),
+            colleagues = listOf(queue, player, library, likes, settings, search, updates),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

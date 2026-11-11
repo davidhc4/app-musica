@@ -1,5 +1,6 @@
 package com.davidhc4.musica.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +17,12 @@ import com.davidhc4.musica.core.ThemeMode
 /** Color principal de la app. */
 private val Accent = Color(0xFF7B5CF0)
 
-fun isDarkTheme(settings: AppSettings): Boolean = settings.mode == ThemeMode.DARK
+@Composable
+fun isDarkTheme(settings: AppSettings): Boolean = when (settings.mode) {
+    ThemeMode.DARK -> true
+    ThemeMode.LIGHT -> false
+    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+}
 
 @Composable
 fun MusicaTheme(settings: AppSettings, content: @Composable () -> Unit) {

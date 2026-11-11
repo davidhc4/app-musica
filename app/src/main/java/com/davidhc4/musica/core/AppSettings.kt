@@ -1,6 +1,7 @@
 package com.davidhc4.musica.core
 
-enum class ThemeMode { LIGHT, DARK }
+/** SYSTEM sigue el modo claro u oscuro que tenga el celular. */
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
 data class AppSettings(
     val mode: ThemeMode = ThemeMode.DARK,

@@ -28,7 +28,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.davidhc4.musica.MusicaApp
 import com.davidhc4.musica.core.AppEvent
@@ -73,6 +72,7 @@ fun MusicaRoot(app: MusicaApp) {
     val settings by app.settings.state.collectAsState()
     val search by app.search.state.collectAsState()
     val update by app.updates.state.collectAsState()
+    val likes by app.likes.state.collectAsState()
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -115,9 +115,11 @@ fun MusicaRoot(app: MusicaApp) {
                 when (tab) {
                     0 -> LibraryScreen(
                         tracks = library.tracks,
+                        liked = likes.tracks,
                         currentId = currentTrack?.id,
                         artwork = app.artwork,
                         onAddSongs = addSongs,
+                        onToggleLike = { app.mediator.post(AppEvent.ToggleLike(it)) },
                         onPlay = { tracks, index -> app.mediator.post(AppEvent.PlayTracks(tracks, index)) },
                         onRemove = { app.mediator.post(AppEvent.RemoveFromLibrary(it.id)) },
                     )
@@ -186,6 +188,8 @@ fun MusicaRoot(app: MusicaApp) {
                         app.mediator.post(AppEvent.SeekTo((fraction * progress.durationMs).toLong()))
                     },
                     videoSlot = panelSlot,
+                    liked = currentTrack.id in likes.ids,
+                    onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
                 )
             }
         }
@@ -196,12 +200,10 @@ fun MusicaRoot(app: MusicaApp) {
             else -> miniVideoBounds
         }
         if (videoBounds != null) {
-            val inPanel = playerOpen && panelVideoBounds != null
             VideoOverlay(
                 view = app.youtube.view,
                 bounds = videoBounds,
-                interactive = inPanel,
-                cornerRadius = if (inPanel) 16.dp else 10.dp,
+                interactive = playerOpen && panelVideoBounds != null,
             )
         }
 

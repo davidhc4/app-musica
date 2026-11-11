@@ -1,5 +1,6 @@
 package com.davidhc4.musica.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -87,8 +88,17 @@ fun LibraryScreen(
     onAddSongs: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onRemove: (Track) -> Unit,
+    liked: List<Track> = emptyList(),
+    onToggleLike: (Track) -> Unit = {},
 ) {
     var toRemove by remember { mutableStateOf<Track?>(null) }
+    var showLiked by rememberSaveable { mutableStateOf(false) }
+
+    if (showLiked) {
+        BackHandler { showLiked = false }
+        LikedScreen(liked, currentId, artwork, onBack = { showLiked = false }, onPlay = onPlay, onToggleLike = onToggleLike)
+        return
+    }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(
@@ -98,7 +108,7 @@ fun LibraryScreen(
             IconTap(AppIcons.Add, "Agregar canciones", onAddSongs, tint = MaterialTheme.colorScheme.primary)
         }
 
-        if (tracks.isEmpty()) {
+        if (tracks.isEmpty() && liked.isEmpty()) {
             EmptyState(
                 icon = AppIcons.MusicNote,
                 title = "Tu biblioteca está vacía",
@@ -110,6 +120,7 @@ fun LibraryScreen(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             ) {
+                item(key = "album-liked") { LikedAlbumRow(liked.size) { showLiked = true } }
                 itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
                     SongRow(
                         track = track,
@@ -136,6 +147,100 @@ fun LibraryScreen(
             },
             dismissButton = { TextButton(onClick = { toRemove = null }) { Text("Cancelar") } },
         )
+    }
+}
+
+/** Fila que abre el álbum con las canciones marcadas con "me gusta". */
+@Composable
+private fun LikedAlbumRow(count: Int, onOpen: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFF7B5CF0), Color(0xFFE0569B)))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(AppIcons.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Canciones que te gustan", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                if (count == 1) "1 canción" else "$count canciones",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LikedScreen(
+    liked: List<Track>,
+    currentId: String?,
+    artwork: ArtworkLoader,
+    onBack: () -> Unit,
+    onPlay: (List<Track>, Int) -> Unit,
+    onToggleLike: (Track) -> Unit,
+) {
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 12.dp, top = 16.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconTap(AppIcons.ArrowBack, "Volver", onBack)
+            Spacer(Modifier.width(4.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Te gustan", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (liked.size == 1) "1 canción" else "${liked.size} canciones",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        if (liked.isEmpty()) {
+            EmptyState(
+                icon = AppIcons.FavoriteBorder,
+                title = "Aún no hay canciones",
+                message = "Toca el corazón en el reproductor y la canción se guarda aquí.",
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                itemsIndexed(liked, key = { _, track -> track.id }) { index, track ->
+                    SongRow(
+                        track = track,
+                        isCurrent = track.id == currentId,
+                        artwork = artwork,
+                        onClick = { onPlay(liked, index) },
+                        trailing = {
+                            IconTap(
+                                icon = AppIcons.Favorite,
+                                description = "Quitar de las que te gustan",
+                                onClick = { onToggleLike(track) },
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -314,7 +419,11 @@ fun SettingsScreen(
         ) {
             SectionLabel("Tema")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(ThemeMode.LIGHT to "Claro", ThemeMode.DARK to "Oscuro").forEach { (mode, label) ->
+                listOf(
+                    ThemeMode.DARK to "Oscuro",
+                    ThemeMode.SYSTEM to "Automático",
+                    ThemeMode.LIGHT to "Claro",
+                ).forEach { (mode, label) ->
                     val selected = settings.mode == mode
                     Box(
                         Modifier
@@ -349,7 +458,24 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(16.dp))
             SectionLabel("Acerca de")
-            Text("Música $versionName", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(vertical = 22.dp, horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                MakerMark(size = 64.dp)
+                Spacer(Modifier.height(12.dp))
+                Text("Música", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Versión $versionName",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -458,6 +584,8 @@ fun PlayerScreen(
     onPrevious: () -> Unit,
     onSeek: (Float) -> Unit,
     videoSlot: (@Composable (Modifier) -> Unit)? = null,
+    liked: Boolean = false,
+    onToggleLike: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
@@ -487,7 +615,12 @@ fun PlayerScreen(
                 fontWeight = FontWeight.SemiBold,
                 color = colors.onSurfaceVariant,
             )
-            Spacer(Modifier.size(48.dp))
+            if (videoSlot != null) {
+                // YouTube pide que su reproductor siga a la vista mientras suena.
+                videoSlot(Modifier.size(width = 80.dp, height = 45.dp))
+            } else {
+                Spacer(Modifier.size(48.dp))
+            }
         }
 
         Box(
@@ -497,42 +630,43 @@ fun PlayerScreen(
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (videoSlot != null) {
-                videoSlot(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.Black)
-                )
-            } else {
-                TrackArtwork(
-                    track = track,
-                    loader = artwork,
-                    cornerRadius = 24.dp,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                        .shadow(24.dp, RoundedCornerShape(24.dp)),
-                )
-            }
+            TrackArtwork(
+                track = track,
+                loader = artwork,
+                cornerRadius = 24.dp,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .shadow(24.dp, RoundedCornerShape(24.dp)),
+            )
         }
 
-        Text(
-            track.title,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            track.artistOrUnknown(),
-            fontSize = 16.sp,
-            color = colors.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    track.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    track.artistOrUnknown(),
+                    fontSize = 16.sp,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconTap(
+                icon = if (liked) AppIcons.Favorite else AppIcons.FavoriteBorder,
+                description = if (liked) "Quitar de las que te gustan" else "Me gusta",
+                onClick = onToggleLike,
+                iconSize = 28.dp,
+                tint = if (liked) colors.primary else colors.onSurfaceVariant,
+            )
+        }
         if (track.isPreview) {
             Spacer(Modifier.height(4.dp))
             Text(

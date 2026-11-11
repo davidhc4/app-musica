@@ -34,6 +34,7 @@ sealed interface AppEvent {
     // Biblioteca
     data class AddToLibrary(val tracks: List<Track>) : AppEvent
     data class RemoveFromLibrary(val trackId: String) : AppEvent
+    data class ToggleLike(val track: Track) : AppEvent
 
     // Búsqueda en línea
     data class SearchRequested(val query: String) : AppEvent

@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.net.httpGetBytes
+import com.davidhc4.musica.source.YOUTUBE_PREFIX
+import com.davidhc4.musica.source.isYouTubeUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -36,14 +38,22 @@ class ArtworkLoader(private val context: Context) {
     private val withoutArtwork = HashSet<String>()
 
     suspend fun load(track: Track): ImageBitmap? {
-        val key = track.artworkUrl ?: track.uri
+        val urls = artworkUrls(track)
+        val key = urls.firstOrNull() ?: track.uri
         cache.get(key)?.let { return it.asImageBitmap() }
         if (key in withoutArtwork) return null
 
-        val remote = track.artworkUrl != null
+        val remote = urls.isNotEmpty()
         val bitmap = withContext(Dispatchers.IO) {
             try {
-                if (remote) decodeBytes(httpGetBytes(track.artworkUrl!!)) else decodeEmbedded(track.uri)
+                if (remote) {
+                    // Se prueba de la mejor imagen a la más básica hasta que una cargue.
+                    urls.firstNotNullOfOrNull { url ->
+                        runCatching { decodeBytes(httpGetBytes(url)) }.getOrNull()
+                    }
+                } else {
+                    decodeEmbedded(track.uri)
+                }
             } catch (_: Exception) {
                 null
             }
@@ -79,6 +89,16 @@ class ArtworkLoader(private val context: Context) {
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
+}
+
+/** Direcciones donde buscar la carátula, de la mejor a la más básica. */
+fun artworkUrls(track: Track): List<String> {
+    if (!isYouTubeUri(track.uri)) return listOfNotNull(track.artworkUrl)
+    val id = track.uri.removePrefix(YOUTUBE_PREFIX)
+    return listOf(
+        "https://i.ytimg.com/vi/$id/hq720.jpg",
+        "https://i.ytimg.com/vi/$id/mqdefault.jpg",
+    ) + listOfNotNull(track.artworkUrl)
 }
 
 /**

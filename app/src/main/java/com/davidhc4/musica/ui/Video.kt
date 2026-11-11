@@ -5,16 +5,13 @@ import android.view.ViewGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.viewinterop.AndroidView
@@ -31,9 +28,12 @@ fun VideoSlot(modifier: Modifier, onBounds: (Rect?) -> Unit) {
     Box(modifier.onGloballyPositioned { onBounds(Rect(it.positionInRoot(), it.size.toSize())) })
 }
 
+/**
+ * No se recorta con esquinas redondeadas a propósito: en algunos celulares eso deja el video en negro.
+ */
 /** Coloca la vista del video sobre el hueco indicado. Solo responde a toques si [interactive]. */
 @Composable
-fun VideoOverlay(view: View, bounds: Rect, interactive: Boolean, cornerRadius: Dp) {
+fun VideoOverlay(view: View, bounds: Rect, interactive: Boolean) {
     val density = LocalDensity.current
     AndroidView(
         factory = {
@@ -43,7 +43,6 @@ fun VideoOverlay(view: View, bounds: Rect, interactive: Boolean, cornerRadius: D
         update = { it.setOnTouchListener { _, _ -> !interactive } },
         modifier = Modifier
             .offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
-            .size(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() })
-            .clip(RoundedCornerShape(cornerRadius)),
+            .size(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() }),
     )
 }

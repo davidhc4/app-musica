@@ -11,7 +11,8 @@ Ya puedes:
 - Con una llave gratuita de YouTube (Ajustes → YouTube), buscar y oír canciones de artistas conocidos con el reproductor oficial de YouTube: el video se ve mientras suena y se pausa al salir de la app
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
-- Cambiar entre tema claro y oscuro
+- Marcar canciones con "me gusta" y encontrarlas en el álbum "Canciones que te gustan"
+- Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 
 La carátula sale del propio archivo; si no trae ninguna, la app dibuja una portada con colores propios.
