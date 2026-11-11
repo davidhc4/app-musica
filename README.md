@@ -17,6 +17,8 @@ Ya puedes:
 - Modo aleatorio, repetir todas o una, y ver la cola para saltar a cualquier canción
 - Crear listas de reproducción propias y agregar canciones desde el reproductor
 - Buscar a la vez en YouTube y en la música libre, y descargar la música libre desde la misma lista
+- Encontrar sola la música guardada en el celular, ordenar la biblioteca y retomar al abrir la app lo que estabas oyendo
+- Menú de opciones en cada canción: reproducir a continuación, agregar a la cola o a una lista, me gusta y descargar
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 

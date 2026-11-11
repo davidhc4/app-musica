@@ -19,7 +19,9 @@ import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.RoutingEngine
 import com.davidhc4.musica.player.YouTubeEngine
+import com.davidhc4.musica.queue.FileSessionStore
 import com.davidhc4.musica.queue.QueueColleague
+import com.davidhc4.musica.queue.SessionColleague
 import com.davidhc4.musica.search.SearchColleague
 import com.davidhc4.musica.source.AudiusSource
 import com.davidhc4.musica.source.CompositeSource
@@ -126,9 +128,10 @@ class MusicaApp : Application() {
                     .onFailure { Log.e("Musica", "No se pudo abrir el instalador", it) }
             },
         )
+        val session = SessionColleague(FileSessionStore(File(filesDir, "sesion.json"))) { player.positionMs() }
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, library, likes, playlists, downloads, settings, search, updates),
+            colleagues = listOf(queue, player, session, library, likes, playlists, downloads, settings, search, updates),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

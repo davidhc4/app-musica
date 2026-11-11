@@ -2,6 +2,7 @@ package com.davidhc4.musica.library
 
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.core.EventMediator
+import com.davidhc4.musica.core.LibrarySort
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.mediatorScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,7 +49,10 @@ class LibraryAndSearchTest {
 
         mediator.post(AppEvent.AddToLibrary(listOf(track("1", "B"), track("1", "B"), track("2", "A"))))
         advanceUntilIdle()
-        assertEquals(listOf("A", "B"), store.stored.map { it.title })
+        // En pantalla van por orden alfabético; guardadas, en el orden en que se agregaron.
+        assertEquals(listOf("A", "B"), library.state.value.tracks.map { it.title })
+        assertEquals(listOf("B", "A"), store.stored.map { it.title })
+        assertEquals(listOf("A", "B"), library.state.value.recent.map { it.title })
         assertEquals(1, store.saves)
 
         mediator.post(AppEvent.AddToLibrary(listOf(track("1", "B"))))
@@ -68,6 +72,33 @@ class LibraryAndSearchTest {
 
         assertEquals(listOf("B"), library.state.value.tracks.map { it.title })
         assertEquals(listOf("B"), store.stored.map { it.title })
+    }
+
+    @Test
+    fun `la biblioteca se puede ordenar por titulo artista o recientes`() {
+        val a = track("1", "Zeta", "Ana")
+        val b = track("2", "Alfa", null)
+        val c = track("3", "Medio", "Álvaro")
+        val state = LibraryState(tracks = listOf(b, c, a), loaded = true, recent = listOf(c, b, a))
+
+        assertEquals(listOf("Alfa", "Medio", "Zeta"), sortLibrary(state, LibrarySort.TITLE).map { it.title })
+        assertEquals(listOf("Medio", "Zeta", "Alfa"), sortLibrary(state, LibrarySort.ARTIST).map { it.title })
+        assertEquals(listOf("Medio", "Alfa", "Zeta"), sortLibrary(state, LibrarySort.RECENT).map { it.title })
+    }
+
+    @Test
+    fun `al buscar musica en el celular no se repite lo que ya estaba`() {
+        val library = listOf(
+            Track(id = "content://doc/1", title = "Canción Uno", uri = "content://doc/1", durationMs = 200_000),
+            Track(id = "content://media/7", title = "Otra", uri = "content://media/7", durationMs = 100_000),
+        )
+        val found = listOf(
+            Track(id = "content://media/5", title = "cancion uno", uri = "content://media/5", durationMs = 200_400),
+            Track(id = "content://media/7", title = "Otra", uri = "content://media/7", durationMs = 100_000),
+            Track(id = "content://media/9", title = "Nueva", uri = "content://media/9", durationMs = 90_000),
+        )
+
+        assertEquals(listOf("Nueva"), newDeviceTracks(found, library).map { it.title })
     }
 
     private val songs = listOf(

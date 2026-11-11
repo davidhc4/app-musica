@@ -33,6 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.davidhc4.musica.core.LibrarySort
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -105,6 +108,10 @@ fun LibraryScreen(
     onCreatePlaylist: (String) -> Unit = {},
     onDeletePlaylist: (String) -> Unit = {},
     onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
+    menuFor: (Track) -> List<MenuAction> = { emptyList() },
+    sort: LibrarySort = LibrarySort.TITLE,
+    onSort: (LibrarySort) -> Unit = {},
+    onScanDevice: () -> Unit = {},
 ) {
     var toRemove by remember { mutableStateOf<Track?>(null) }
     var naming by remember { mutableStateOf(false) }
@@ -130,6 +137,7 @@ fun LibraryScreen(
                 rowAction = "Quitar de la lista",
                 onBack = { album = null },
                 onPlay = onPlay,
+                menuFor = menuFor,
                 onRowAction = { onRemoveFromPlaylist(openList.id, it) },
             )
         } else if (album == "liked") {
@@ -144,6 +152,7 @@ fun LibraryScreen(
                 rowAction = "Quitar de las que te gustan",
                 onBack = { album = null },
                 onPlay = onPlay,
+                menuFor = menuFor,
                 onRowAction = onToggleLike,
             )
         } else {
@@ -158,6 +167,7 @@ fun LibraryScreen(
                 rowAction = "Quitar la descarga",
                 onBack = { album = null },
                 onPlay = onPlay,
+                menuFor = menuFor,
                 onRowAction = onRemoveDownload,
             )
         }
@@ -169,7 +179,10 @@ fun LibraryScreen(
             title = "Tu música",
             subtitle = if (tracks.isEmpty()) null else "${tracks.size} canciones",
         ) {
-            IconTap(AppIcons.Add, "Agregar canciones", onAddSongs, tint = MaterialTheme.colorScheme.primary)
+            Row {
+                IconTap(AppIcons.Sync, "Buscar música en el celular", onScanDevice)
+                IconTap(AppIcons.Add, "Agregar canciones", onAddSongs, tint = MaterialTheme.colorScheme.primary)
+            }
         }
 
         if (tracks.isEmpty() && liked.isEmpty() && downloaded.isEmpty() && playlists.isEmpty()) {
@@ -178,7 +191,13 @@ fun LibraryScreen(
                 title = "Tu biblioteca está vacía",
                 message = "Agrega canciones de tu celular y escúchalas sin conexión.",
                 modifier = Modifier.weight(1f),
-            ) { PillButton("Agregar canciones", onAddSongs) }
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    PillButton("Buscar música en el celular", onScanDevice)
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(onClick = onAddSongs) { Text("Elegir archivos a mano") }
+                }
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -218,7 +237,12 @@ fun LibraryScreen(
                     ) { naming = true }
                 }
                 if (tracks.isNotEmpty()) {
-                    item(key = "header-songs") { ListHeader("Canciones") }
+                    item(key = "header-songs") {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) { ListHeader("Canciones") }
+                            SortMenu(sort, onSort)
+                        }
+                    }
                 }
                 itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
                     SongRow(
@@ -227,6 +251,7 @@ fun LibraryScreen(
                         artwork = artwork,
                         onClick = { onPlay(tracks, index) },
                         onLongClick = { toRemove = track },
+                        menu = menuFor(track) + MenuAction("Quitar de la biblioteca") { toRemove = track },
                     )
                 }
             }
@@ -276,6 +301,47 @@ fun LibraryScreen(
     }
 }
 
+private fun sortLabel(sort: LibrarySort) = when (sort) {
+    LibrarySort.TITLE -> "Por título"
+    LibrarySort.ARTIST -> "Por artista"
+    LibrarySort.RECENT -> "Recientes"
+}
+
+/** Deja elegir en qué orden se ven las canciones de la biblioteca. */
+@Composable
+private fun SortMenu(sort: LibrarySort, onSort: (LibrarySort) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { open = true }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                AppIcons.Sort,
+                contentDescription = "Ordenar",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(sortLabel(sort), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            LibrarySort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(sortLabel(option)) },
+                    onClick = {
+                        open = false
+                        onSort(option)
+                    },
+                )
+            }
+        }
+    }
+}
+
 /** Diálogo para escribir un nombre, por ejemplo el de una lista nueva. */
 @Composable
 private fun NameDialog(title: String, confirm: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
@@ -300,7 +366,7 @@ private fun NameDialog(title: String, confirm: String, onConfirm: (String) -> Un
 
 /** Diálogo para meter la canción que suena en una lista existente o en una nueva. */
 @Composable
-private fun PlaylistPicker(
+fun PlaylistPicker(
     playlists: List<Playlist>,
     trackId: String,
     onPick: (String) -> Unit,
@@ -412,6 +478,7 @@ private fun AlbumScreen(
     onBack: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onRowAction: (Track) -> Unit,
+    menuFor: (Track) -> List<MenuAction> = { emptyList() },
 ) {
     val liked = tracks
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -459,6 +526,7 @@ private fun AlbumScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         },
+                        menu = menuFor(track),
                     )
                 }
             }
@@ -488,6 +556,7 @@ fun SearchScreen(
     onSave: (Track) -> Unit,
     downloads: DownloadsState = DownloadsState(),
     onDownload: (Track) -> Unit = {},
+    menuFor: (Track) -> List<MenuAction> = { emptyList() },
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val local = remember(query, library) { searchTracks(library, query) }
@@ -563,6 +632,7 @@ fun SearchScreen(
                             isCurrent = track.id == currentId,
                             artwork = artwork,
                             onClick = { onPlay(local, index) },
+                            menu = menuFor(track),
                         )
                     }
                 }
@@ -603,13 +673,17 @@ fun SearchScreen(
                             isCurrent = track.id == currentId,
                             artwork = artwork,
                             onClick = { onPlay(group, index) },
+                            // A la vista queda lo principal: descargar si se puede y, si no, guardar.
+                            // Lo demás está en el menú de tres puntos.
                             trailing = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                val status = downloadStatus(track, downloads)
+                                if (status != DownloadStatus.NONE) {
                                     DownloadControl(
-                                        status = downloadStatus(track, downloads),
+                                        status = status,
                                         progress = downloads.inProgress[track.id] ?: 0f,
                                         onClick = { onDownload(track) },
                                     )
+                                } else {
                                     IconTap(
                                         icon = if (saved) AppIcons.Check else AppIcons.Add,
                                         description = if (saved) "Guardada en tu biblioteca" else "Guardar en tu biblioteca",
@@ -619,6 +693,9 @@ fun SearchScreen(
                                     )
                                 }
                             },
+                            menu = menuFor(track) + listOfNotNull(
+                                if (saved) null else MenuAction("Guardar en tu biblioteca") { onSave(track) }
+                            ),
                         )
                     }
                 }
@@ -874,6 +951,7 @@ fun PlayerScreen(
     onShuffle: () -> Unit = {},
     onRepeat: () -> Unit = {},
     onPlayIndex: (Int) -> Unit = {},
+    onRemoveFromQueue: (Int) -> Unit = {},
     playlists: List<Playlist> = emptyList(),
     onAddToPlaylist: (String) -> Unit = {},
     onCreatePlaylist: (String) -> Unit = {},
@@ -961,6 +1039,16 @@ fun PlayerScreen(
                         isCurrent = index == queue.currentIndex,
                         artwork = artwork,
                         onClick = { onPlayIndex(index) },
+                        trailing = {
+                            IconTap(
+                                icon = AppIcons.Close,
+                                description = "Quitar de la cola",
+                                onClick = { onRemoveFromQueue(index) },
+                                size = 40.dp,
+                                iconSize = 20.dp,
+                                tint = colors.onSurfaceVariant,
+                            )
+                        },
                     )
                 }
             }

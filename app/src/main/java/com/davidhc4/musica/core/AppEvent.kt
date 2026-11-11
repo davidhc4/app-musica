@@ -33,6 +33,12 @@ sealed interface AppEvent {
     data object ToggleShuffle : AppEvent
     data object CycleRepeat : AppEvent
     data class PlayQueueIndex(val index: Int) : AppEvent
+    data class PlayNext(val track: Track) : AppEvent
+    data class RemoveFromQueue(val index: Int) : AppEvent
+
+    // Retomar lo que se estaba oyendo
+    data class RestoreQueue(val tracks: List<Track>, val index: Int, val positionMs: Long) : AppEvent
+    data object SaveSession : AppEvent
 
     // Biblioteca
     data class AddToLibrary(val tracks: List<Track>) : AppEvent
@@ -57,13 +63,19 @@ sealed interface AppEvent {
 
     // Fuentes de música
     data class SetYouTubeKey(val key: String) : AppEvent
+    data class SetLibrarySort(val sort: LibrarySort) : AppEvent
 
     // Actualizaciones de la app
     data object CheckForUpdates : AppEvent
     data object InstallUpdate : AppEvent
 
     // Avisos (los publican los componentes)
-    data class CurrentTrackChanged(val track: Track?) : AppEvent
+    data class CurrentTrackChanged(
+        val track: Track?,
+        /** Falso cuando solo se deja lista la canción, sin empezar a sonar (al reabrir la app). */
+        val autoPlay: Boolean = true,
+        val startPositionMs: Long = 0L,
+    ) : AppEvent
     data class QueueChanged(val tracks: List<Track>, val currentIndex: Int) : AppEvent
     data class PlaybackStateChanged(val isPlaying: Boolean) : AppEvent
     data object TrackEnded : AppEvent

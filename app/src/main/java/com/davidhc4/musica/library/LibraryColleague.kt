@@ -2,6 +2,7 @@ package com.davidhc4.musica.library
 
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.core.BaseColleague
+import com.davidhc4.musica.core.LibrarySort
 import com.davidhc4.musica.core.Track
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,9 +13,22 @@ interface LibraryStore {
 }
 
 data class LibraryState(
+    /** Las canciones en orden alfabético. */
     val tracks: List<Track> = emptyList(),
     val loaded: Boolean = false,
+    /** Las mismas canciones, de la agregada más recientemente a la más antigua. */
+    val recent: List<Track> = emptyList(),
 )
+
+/** Devuelve la biblioteca en el orden elegido en la pantalla. */
+fun sortLibrary(state: LibraryState, sort: LibrarySort): List<Track> = when (sort) {
+    LibrarySort.TITLE -> state.tracks
+    LibrarySort.RECENT -> state.recent
+    // Las que no tienen artista van al final.
+    LibrarySort.ARTIST -> state.tracks.sortedWith(
+        compareBy<Track> { it.artist == null }.thenBy { it.artist?.normalized().orEmpty() }
+    )
+}
 
 /** Guarda todas las canciones del usuario y las conserva entre sesiones. */
 class LibraryColleague(private val store: LibraryStore) : BaseColleague() {
@@ -25,19 +39,20 @@ class LibraryColleague(private val store: LibraryStore) : BaseColleague() {
     override suspend fun handle(event: AppEvent) {
         when (event) {
             is AppEvent.AppStarted -> {
-                _state.value = LibraryState(sorted(store.load()), loaded = true)
+                added = store.load()
+                _state.value = LibraryState(sorted(added), loaded = true, recent = added.reversed())
             }
 
             is AppEvent.AddToLibrary -> {
-                val known = _state.value.tracks.map { it.id }.toSet()
+                val known = added.map { it.id }.toSet()
                 val fresh = event.tracks.filter { it.id !in known }.distinctBy { it.id }
                 if (fresh.isEmpty()) return
-                commit(sorted(_state.value.tracks + fresh))
+                commit(added + fresh)
             }
 
             is AppEvent.RemoveFromLibrary -> {
-                val remaining = _state.value.tracks.filter { it.id != event.trackId }
-                if (remaining.size == _state.value.tracks.size) return
+                val remaining = added.filter { it.id != event.trackId }
+                if (remaining.size == added.size) return
                 commit(remaining)
             }
 
@@ -45,8 +60,12 @@ class LibraryColleague(private val store: LibraryStore) : BaseColleague() {
         }
     }
 
+    /** Las canciones en el orden en que se agregaron; así se guardan. */
+    private var added: List<Track> = emptyList()
+
     private suspend fun commit(tracks: List<Track>) {
-        _state.value = _state.value.copy(tracks = tracks)
+        added = tracks
+        _state.value = _state.value.copy(tracks = sorted(tracks), recent = tracks.reversed())
         store.save(tracks)
     }
 

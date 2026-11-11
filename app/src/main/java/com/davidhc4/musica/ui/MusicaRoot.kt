@@ -1,5 +1,12 @@
 package com.davidhc4.musica.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import com.davidhc4.musica.library.newDeviceTracks
+import com.davidhc4.musica.library.scanDeviceMusic
+import com.davidhc4.musica.library.sortLibrary
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -97,6 +104,58 @@ fun MusicaRoot(app: MusicaApp) {
     }
     val addSongs = { picker.launch(arrayOf("audio/*")) }
 
+    // Busca toda la música guardada en el celular y agrega la que falte en la biblioteca.
+    val scanDevice: () -> Unit = {
+        scope.launch {
+            val found = withContext(Dispatchers.IO) {
+                runCatching { scanDeviceMusic(context) }.getOrDefault(emptyList())
+            }
+            val fresh = newDeviceTracks(found, app.library.state.value.tracks)
+            if (fresh.isNotEmpty()) app.mediator.post(AppEvent.AddToLibrary(fresh))
+            val message = when {
+                fresh.size == 1 -> "Se agregó 1 canción"
+                fresh.isNotEmpty() -> "Se agregaron ${fresh.size} canciones"
+                else -> "No se encontró música nueva en el celular"
+            }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val audioPermission =
+        if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
+        else Manifest.permission.READ_EXTERNAL_STORAGE
+    val askAudio = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            scanDevice()
+        } else {
+            Toast.makeText(context, "Sin ese permiso no se puede buscar la música del celular", Toast.LENGTH_LONG).show()
+        }
+    }
+    val findDeviceMusic: () -> Unit = {
+        if (context.checkSelfPermission(audioPermission) == PackageManager.PERMISSION_GRANTED) scanDevice()
+        else askAudio.launch(audioPermission)
+    }
+
+    // Opciones del menú de tres puntos, iguales para una canción en cualquier pantalla.
+    var pickListFor by remember { mutableStateOf<Track?>(null) }
+    val menuFor: (Track) -> List<MenuAction> = { track ->
+        buildList {
+            add(MenuAction("Reproducir a continuación") { app.mediator.post(AppEvent.PlayNext(track)) })
+            add(MenuAction("Agregar a la cola") { app.mediator.post(AppEvent.Enqueue(listOf(track))) })
+            add(MenuAction("Agregar a una lista") { pickListFor = track })
+            add(
+                MenuAction(if (track.id in likes.ids) "Quitar me gusta" else "Me gusta") {
+                    app.mediator.post(AppEvent.ToggleLike(track))
+                }
+            )
+            when (downloadStatus(track, downloads)) {
+                DownloadStatus.AVAILABLE -> add(MenuAction("Descargar") { app.mediator.post(AppEvent.DownloadTrack(track)) })
+                DownloadStatus.RUNNING -> add(MenuAction("Cancelar la descarga") { app.mediator.post(AppEvent.RemoveDownload(track.id)) })
+                DownloadStatus.DONE -> add(MenuAction("Quitar la descarga") { app.mediator.post(AppEvent.RemoveDownload(track.id)) })
+                DownloadStatus.NONE -> Unit
+            }
+        }
+    }
+
     // Un mismo botón descarga la canción o, si ya está bajada o bajando, la quita.
     val toggleDownload: (Track) -> Unit = { track ->
         app.mediator.post(
@@ -128,7 +187,11 @@ fun MusicaRoot(app: MusicaApp) {
             Box(Modifier.weight(1f)) {
                 when (tab) {
                     0 -> LibraryScreen(
-                        tracks = library.tracks,
+                        tracks = remember(library, settings.librarySort) { sortLibrary(library, settings.librarySort) },
+                        menuFor = menuFor,
+                        sort = settings.librarySort,
+                        onSort = { app.mediator.post(AppEvent.SetLibrarySort(it)) },
+                        onScanDevice = findDeviceMusic,
                         liked = likes.tracks,
                         downloaded = downloads.tracks,
                         playlists = playlists.playlists,
@@ -156,6 +219,7 @@ fun MusicaRoot(app: MusicaApp) {
                         onSave = { app.mediator.post(AppEvent.AddToLibrary(listOf(it))) },
                         downloads = downloads,
                         onDownload = toggleDownload,
+                        menuFor = menuFor,
                     )
 
                     else -> SettingsScreen(
@@ -221,6 +285,7 @@ fun MusicaRoot(app: MusicaApp) {
                     onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
                     onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },
+                    onRemoveFromQueue = { app.mediator.post(AppEvent.RemoveFromQueue(it)) },
                     download = downloadStatus(currentTrack, downloads),
                     downloadProgress = downloads.inProgress[currentTrack.id] ?: 0f,
                     onDownload = { toggleDownload(currentTrack) },
@@ -238,6 +303,22 @@ fun MusicaRoot(app: MusicaApp) {
                 view = app.youtube.view,
                 bounds = videoBounds,
                 interactive = playerOpen && panelVideoBounds != null,
+            )
+        }
+
+        pickListFor?.let { track ->
+            PlaylistPicker(
+                playlists = playlists.playlists,
+                trackId = track.id,
+                onPick = {
+                    app.mediator.post(AppEvent.AddToPlaylist(it, track))
+                    pickListFor = null
+                },
+                onCreate = {
+                    app.mediator.post(AppEvent.CreatePlaylist(it, track))
+                    pickListFor = null
+                },
+                onDismiss = { pickListFor = null },
             )
         }
 

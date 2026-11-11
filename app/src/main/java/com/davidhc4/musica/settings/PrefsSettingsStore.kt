@@ -2,6 +2,7 @@ package com.davidhc4.musica.settings
 
 import android.content.Context
 import com.davidhc4.musica.core.AppSettings
+import com.davidhc4.musica.core.LibrarySort
 import com.davidhc4.musica.core.ThemeMode
 
 class PrefsSettingsStore(context: Context) : SettingsStore {
@@ -12,12 +13,15 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
         mode = runCatching { ThemeMode.valueOf(prefs.getString("modo", null) ?: "") }
             .getOrDefault(AppSettings().mode),
         youTubeKey = prefs.getString("llave_youtube", null).orEmpty(),
+        librarySort = runCatching { LibrarySort.valueOf(prefs.getString("orden", null) ?: "") }
+            .getOrDefault(AppSettings().librarySort),
     )
 
     override fun save(settings: AppSettings) {
         prefs.edit()
             .putString("modo", settings.mode.name)
             .putString("llave_youtube", settings.youTubeKey)
+            .putString("orden", settings.librarySort.name)
             .apply()
     }
 }

@@ -76,5 +76,7 @@ class MainActivity : ComponentActivity() {
         // YouTube solo permite reproducir mientras el video se ve, así que se pausa al salir.
         val app = application as MusicaApp
         if (isYouTubeUri(app.player.state.value.track?.uri)) app.mediator.post(AppEvent.Pause)
+        // Se anota por dónde iba la canción, para retomarla si Android cierra la app.
+        app.mediator.post(AppEvent.SaveSession)
     }
 }

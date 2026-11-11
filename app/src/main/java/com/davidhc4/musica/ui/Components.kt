@@ -22,6 +22,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +79,7 @@ fun SongRow(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    menu: List<MenuAction> = emptyList(),
 ) {
     Row(
         modifier = modifier
@@ -113,6 +120,37 @@ fun SongRow(
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        if (menu.isNotEmpty()) SongMenu(menu)
+    }
+}
+
+/** Una opción del menú de una canción. */
+class MenuAction(val label: String, val onClick: () -> Unit)
+
+/** Botón de tres puntos que abre las opciones de una canción. */
+@Composable
+fun SongMenu(actions: List<MenuAction>) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconTap(
+            icon = AppIcons.MoreVert,
+            description = "Más opciones",
+            onClick = { open = true },
+            size = 40.dp,
+            iconSize = 22.dp,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label) },
+                    onClick = {
+                        open = false
+                        action.onClick()
+                    },
+                )
+            }
         }
     }
 }

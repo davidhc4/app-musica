@@ -81,6 +81,51 @@ class QueueColleague(
 
             is AppEvent.PlayQueueIndex -> moveTo(event.index)
 
+            is AppEvent.PlayNext -> {
+                val current = s.current
+                if (current == null) {
+                    ordered = listOf(event.track)
+                    update(s.copy(tracks = ordered, currentIndex = 0))
+                    announce()
+                } else {
+                    ordered = ordered.toMutableList().apply {
+                        add((indexOf(current) + 1).coerceIn(0, size), event.track)
+                    }
+                    update(s.copy(tracks = s.tracks.toMutableList().apply { add(s.currentIndex + 1, event.track) }))
+                }
+            }
+
+            is AppEvent.RemoveFromQueue -> {
+                val i = event.index
+                if (i !in s.tracks.indices) return
+                val remaining = s.tracks.filterIndexed { at, _ -> at != i }
+                ordered = ordered.toMutableList().apply { remove(s.tracks[i]) }
+                when {
+                    remaining.isEmpty() -> {
+                        ordered = emptyList()
+                        update(s.copy(tracks = emptyList(), currentIndex = -1))
+                        announce()
+                    }
+                    i < s.currentIndex -> update(s.copy(tracks = remaining, currentIndex = s.currentIndex - 1))
+                    // Se quitó la que sonaba: suena la que quedó en su lugar.
+                    i == s.currentIndex -> {
+                        update(s.copy(tracks = remaining, currentIndex = i.coerceAtMost(remaining.lastIndex)))
+                        announce()
+                    }
+                    else -> update(s.copy(tracks = remaining))
+                }
+            }
+
+            // Al reabrir la app: se deja todo como estaba, sin empezar a sonar.
+            is AppEvent.RestoreQueue -> {
+                if (event.tracks.isEmpty() || s.current != null) return
+                ordered = event.tracks
+                update(s.copy(tracks = ordered, currentIndex = event.index.coerceIn(0, ordered.lastIndex)))
+                mediator.post(
+                    AppEvent.CurrentTrackChanged(_state.value.current, autoPlay = false, startPositionMs = event.positionMs)
+                )
+            }
+
             // La canción terminó sola: aquí sí cuenta "repetir una".
             is AppEvent.TrackEnded -> when {
                 s.current == null -> Unit

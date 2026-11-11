@@ -52,7 +52,8 @@ class PlayerColleague(
                     engine.stop()
                 } else {
                     engine.load(resolve(track))
-                    engine.play()
+                    if (event.startPositionMs > 0L) engine.seekTo(event.startPositionMs)
+                    if (event.autoPlay) engine.play() else engine.pause()
                 }
             }
 
