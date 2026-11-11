@@ -37,6 +37,9 @@ class ArtworkLoader(private val context: Context) {
     private val cache = LruCache<String, Bitmap>(40)
     private val withoutArtwork = HashSet<String>()
 
+    /** Dónde está la carátula guardada en el celular de una canción, si la tiene (descargas). */
+    var localArtwork: (Track) -> java.io.File? = { null }
+
     suspend fun load(track: Track): ImageBitmap? {
         val urls = artworkUrls(track)
         val key = urls.firstOrNull() ?: track.uri
@@ -44,9 +47,13 @@ class ArtworkLoader(private val context: Context) {
         if (key in withoutArtwork) return null
 
         val remote = urls.isNotEmpty()
+        val saved = localArtwork(track)
         val bitmap = withContext(Dispatchers.IO) {
             try {
-                if (remote) {
+                val fromDisk = saved?.let { runCatching { decodeBytes(it.readBytes()) }.getOrNull() }
+                if (fromDisk != null) {
+                    fromDisk
+                } else if (remote) {
                     // Se prueba de la mejor imagen a la más básica hasta que una cargue.
                     urls.firstNotNullOfOrNull { url ->
                         runCatching { decodeBytes(httpGetBytes(url)) }.getOrNull()

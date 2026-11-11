@@ -7,6 +7,8 @@ import com.davidhc4.musica.core.EventMediator
 import com.davidhc4.musica.core.Mediator
 import com.davidhc4.musica.download.DownloadColleague
 import com.davidhc4.musica.net.httpDownload
+import com.davidhc4.musica.net.httpGetBytes
+import com.davidhc4.musica.ui.artworkUrls
 import kotlinx.coroutines.withContext
 import com.davidhc4.musica.library.FileLibraryStore
 import com.davidhc4.musica.library.LibraryColleague
@@ -21,7 +23,7 @@ import com.davidhc4.musica.source.AudiusSource
 import com.davidhc4.musica.source.CompositeSource
 import com.davidhc4.musica.source.JamendoConfig
 import com.davidhc4.musica.source.JamendoSource
-import com.davidhc4.musica.source.PreferredSource
+import com.davidhc4.musica.source.SectionedSource
 import com.davidhc4.musica.source.YouTubeSource
 import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.settings.PrefsSettingsStore
@@ -76,6 +78,11 @@ class MusicaApp : Application() {
             fetch = { url, target, onProgress ->
                 withContext(Dispatchers.IO) { httpDownload(url, target, onProgress = onProgress) }
             },
+            saveArtwork = { track, target ->
+                withContext(Dispatchers.IO) {
+                    artworkUrls(track).firstOrNull()?.let { target.writeBytes(httpGetBytes(it)) }
+                }
+            },
         )
         player = PlayerColleague(
             engine = RoutingEngine(audio, youtube, ::isYouTubeUri),
@@ -86,18 +93,19 @@ class MusicaApp : Application() {
         likes = LikesColleague(FileLibraryStore(File(filesDir, "megusta.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
+        artwork.localArtwork = { downloads.artworkFile(it.id) }
         val freeMusic = CompositeSource(
             listOfNotNull(
                 AudiusSource(),
                 JamendoConfig.CLIENT_ID.takeIf { it.isNotBlank() }?.let { JamendoSource(it) },
             )
         )
-        // Con llave de YouTube se busca ahí; sin llave, o si YouTube falla, en la música libre.
+        // Con llave de YouTube salen sus resultados y después la música libre; sin llave, solo la libre.
         search = SearchColleague(
             appScope,
-            PreferredSource(
+            SectionedSource(
                 primary = YouTubeSource(key = { settings.state.value.youTubeKey }),
-                fallback = freeMusic,
+                secondary = freeMusic,
                 primaryEnabled = { settings.state.value.youTubeKey.isNotBlank() },
             ),
             // Cada búsqueda en YouTube gasta cupo, así que se espera un poco más a que termines de escribir.

@@ -31,7 +31,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import com.davidhc4.musica.MusicaApp
 import com.davidhc4.musica.core.AppEvent
-import com.davidhc4.musica.download.canDownload
+import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.readTrack
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.PlayerState
@@ -96,6 +96,17 @@ fun MusicaRoot(app: MusicaApp) {
     }
     val addSongs = { picker.launch(arrayOf("audio/*")) }
 
+    // Un mismo botón descarga la canción o, si ya está bajada o bajando, la quita.
+    val toggleDownload: (Track) -> Unit = { track ->
+        app.mediator.post(
+            if (track.id in downloads.ids || track.id in downloads.inProgress) {
+                AppEvent.RemoveDownload(track.id)
+            } else {
+                AppEvent.DownloadTrack(track)
+            }
+        )
+    }
+
     val currentTrack = player.track
     // El video de YouTube va en una sola vista que se coloca sobre el hueco del panel o del mini reproductor.
     val isVideo = isYouTubeUri(currentTrack?.uri)
@@ -136,6 +147,8 @@ fun MusicaRoot(app: MusicaApp) {
                         onQueryChange = { app.mediator.post(AppEvent.SearchRequested(it)) },
                         onPlay = { tracks, index -> app.mediator.post(AppEvent.PlayTracks(tracks, index)) },
                         onSave = { app.mediator.post(AppEvent.AddToLibrary(listOf(it))) },
+                        downloads = downloads,
+                        onDownload = toggleDownload,
                     )
 
                     else -> SettingsScreen(
@@ -198,22 +211,9 @@ fun MusicaRoot(app: MusicaApp) {
                     onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
                     onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },
-                    download = when {
-                        currentTrack.id in downloads.ids -> DownloadStatus.DONE
-                        currentTrack.id in downloads.inProgress -> DownloadStatus.RUNNING
-                        canDownload(currentTrack) -> DownloadStatus.AVAILABLE
-                        else -> DownloadStatus.NONE
-                    },
+                    download = downloadStatus(currentTrack, downloads),
                     downloadProgress = downloads.inProgress[currentTrack.id] ?: 0f,
-                    onDownload = {
-                        app.mediator.post(
-                            if (currentTrack.id in downloads.ids || currentTrack.id in downloads.inProgress) {
-                                AppEvent.RemoveDownload(currentTrack.id)
-                            } else {
-                                AppEvent.DownloadTrack(currentTrack)
-                            }
-                        )
-                    },
+                    onDownload = { toggleDownload(currentTrack) },
                 )
             }
         }

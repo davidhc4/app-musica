@@ -101,35 +101,30 @@ class YouTubeTest {
         assertEquals(3, source.search("trueno", 25).size)
     }
 
-    @Test
-    fun `con llave se usa YouTube y sin llave la musica libre`() = runTest {
-        var enabled = true
-        val yt = object : MusicSource {
-            override suspend fun search(query: String, limit: Int) = listOf(Track("youtube:a", "a", uri = "youtube:a"))
-        }
-        val free = object : MusicSource {
-            override suspend fun search(query: String, limit: Int) = listOf(Track("audius:b", "b", uri = "https://b"))
-        }
-        val source = PreferredSource(yt, free) { enabled }
-
-        assertEquals("youtube:a", source.search("x", 10).single().id)
-        enabled = false
-        assertEquals("audius:b", source.search("x", 10).single().id)
+    private val yt = object : MusicSource {
+        override suspend fun search(query: String, limit: Int) = listOf(Track("youtube:a", "a", uri = "youtube:a"))
+    }
+    private val free = object : MusicSource {
+        override suspend fun search(query: String, limit: Int) = listOf(Track("audius:b", "b", uri = "https://b"))
+    }
+    private val broken = object : MusicSource {
+        override suspend fun search(query: String, limit: Int): List<Track> = throw IOException("HTTP 403")
     }
 
     @Test
-    fun `si YouTube falla o no trae nada responde la musica libre`() = runTest {
-        val free = object : MusicSource {
-            override suspend fun search(query: String, limit: Int) = listOf(Track("audius:b", "b", uri = "https://b"))
-        }
-        val broken = object : MusicSource {
-            override suspend fun search(query: String, limit: Int): List<Track> = throw IOException("HTTP 403")
-        }
-        val empty = object : MusicSource {
-            override suspend fun search(query: String, limit: Int) = emptyList<Track>()
-        }
+    fun `con llave salen primero YouTube y luego la musica libre`() = runTest {
+        var enabled = true
+        val source = SectionedSource(yt, free) { enabled }
 
-        assertEquals("audius:b", PreferredSource(broken, free) { true }.search("x", 10).single().id)
-        assertEquals("audius:b", PreferredSource(empty, free) { true }.search("x", 10).single().id)
+        assertEquals(listOf("youtube:a", "audius:b"), source.search("x", 10).map { it.id })
+        enabled = false
+        assertEquals(listOf("audius:b"), source.search("x", 10).map { it.id })
+    }
+
+    @Test
+    fun `si una fuente falla responde la otra y si fallan las dos la busqueda falla`() = runTest {
+        assertEquals(listOf("audius:b"), SectionedSource(broken, free) { true }.search("x", 10).map { it.id })
+        assertEquals(listOf("youtube:a"), SectionedSource(yt, broken) { true }.search("x", 10).map { it.id })
+        assertTrue(runCatching { SectionedSource(broken, broken) { true }.search("x", 10) }.exceptionOrNull() is IOException)
     }
 }

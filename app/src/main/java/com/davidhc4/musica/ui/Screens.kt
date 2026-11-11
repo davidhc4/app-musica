@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.sp
 import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
+import com.davidhc4.musica.download.DownloadsState
+import com.davidhc4.musica.download.canDownload
 import com.davidhc4.musica.library.searchTracks
 import com.davidhc4.musica.queue.QueueState
 import com.davidhc4.musica.queue.RepeatMode
@@ -319,6 +321,8 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
     onSave: (Track) -> Unit,
+    downloads: DownloadsState = DownloadsState(),
+    onDownload: (Track) -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val local = remember(query, library) { searchTracks(library, query) }
@@ -398,9 +402,10 @@ fun SearchScreen(
                     }
                 }
 
-                if (onlineActive) {
-                    val fromYouTube = online.firstOrNull()?.let { isYouTubeUri(it.uri) } == true
-                    item(key = "header-online") { ListHeader(if (fromYouTube) "En YouTube" else "En línea") }
+                val fromYouTube = online.filter { isYouTubeUri(it.uri) }
+                val freeMusic = online.filterNot { isYouTubeUri(it.uri) }
+                if (onlineActive && online.isEmpty()) {
+                    item(key = "header-online") { ListHeader("En línea") }
                 }
                 if (search.loading && online.isEmpty()) {
                     item(key = "loading") {
@@ -419,23 +424,38 @@ fun SearchScreen(
                         )
                     }
                 }
-                itemsIndexed(online, key = { _, track -> "online:${track.id}" }) { index, track ->
-                    val saved = track.id in savedIds
-                    SongRow(
-                        track = track,
-                        isCurrent = track.id == currentId,
-                        artwork = artwork,
-                        onClick = { onPlay(online, index) },
-                        trailing = {
-                            IconTap(
-                                icon = if (saved) AppIcons.Check else AppIcons.Add,
-                                description = if (saved) "Guardada en tu biblioteca" else "Guardar en tu biblioteca",
-                                onClick = { if (!saved) onSave(track) },
-                                tint = if (saved) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    )
+                // Primero YouTube y después la música libre, que es la que se puede descargar.
+                listOf(
+                    "En YouTube" to fromYouTube,
+                    "Música libre · se puede descargar" to freeMusic,
+                ).forEach { (title, group) ->
+                    if (group.isEmpty()) return@forEach
+                    item(key = "header:$title") { ListHeader(title) }
+                    itemsIndexed(group, key = { _, track -> "online:${track.id}" }) { index, track ->
+                        val saved = track.id in savedIds
+                        SongRow(
+                            track = track,
+                            isCurrent = track.id == currentId,
+                            artwork = artwork,
+                            onClick = { onPlay(group, index) },
+                            trailing = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    DownloadControl(
+                                        status = downloadStatus(track, downloads),
+                                        progress = downloads.inProgress[track.id] ?: 0f,
+                                        onClick = { onDownload(track) },
+                                    )
+                                    IconTap(
+                                        icon = if (saved) AppIcons.Check else AppIcons.Add,
+                                        description = if (saved) "Guardada en tu biblioteca" else "Guardar en tu biblioteca",
+                                        onClick = { if (!saved) onSave(track) },
+                                        tint = if (saved) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -627,8 +647,46 @@ private fun UpdateSection(update: UpdateState, onCheck: () -> Unit, onInstall: (
     }
 }
 
-/** Qué puede hacerse con la descarga de la canción que suena. */
+/** Qué puede hacerse con la descarga de una canción. */
 enum class DownloadStatus { NONE, AVAILABLE, RUNNING, DONE }
+
+fun downloadStatus(track: Track, downloads: DownloadsState): DownloadStatus = when {
+    track.id in downloads.ids -> DownloadStatus.DONE
+    track.id in downloads.inProgress -> DownloadStatus.RUNNING
+    canDownload(track) -> DownloadStatus.AVAILABLE
+    else -> DownloadStatus.NONE
+}
+
+/** Botón de descarga: flecha para bajar, círculo mientras baja y marca cuando ya está en el celular. */
+@Composable
+fun DownloadControl(status: DownloadStatus, progress: Float, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    when (status) {
+        DownloadStatus.NONE -> Unit
+        DownloadStatus.RUNNING -> Box(
+            Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Algunas fuentes no dicen el tamaño; entonces el círculo gira sin porcentaje.
+            if (progress > 0f) {
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+        }
+        else -> IconTap(
+            icon = if (status == DownloadStatus.DONE) AppIcons.DownloadDone else AppIcons.Download,
+            description = if (status == DownloadStatus.DONE) "Quitar la descarga" else "Descargar",
+            onClick = onClick,
+            iconSize = 26.dp,
+            tint = if (status == DownloadStatus.DONE) colors.primary else colors.onSurfaceVariant,
+        )
+    }
+}
 
 @Composable
 fun PlayerScreen(
@@ -754,31 +812,7 @@ fun PlayerScreen(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            when (download) {
-                DownloadStatus.NONE -> Unit
-                DownloadStatus.RUNNING -> Box(
-                    Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onDownload),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // Algunas fuentes no dicen el tamaño; entonces el círculo gira sin porcentaje.
-                    if (downloadProgress > 0f) {
-                        CircularProgressIndicator(
-                            progress = { downloadProgress },
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    }
-                }
-                else -> IconTap(
-                    icon = if (download == DownloadStatus.DONE) AppIcons.DownloadDone else AppIcons.Download,
-                    description = if (download == DownloadStatus.DONE) "Quitar la descarga" else "Descargar",
-                    onClick = onDownload,
-                    iconSize = 26.dp,
-                    tint = if (download == DownloadStatus.DONE) colors.primary else colors.onSurfaceVariant,
-                )
-            }
+            DownloadControl(download, downloadProgress, onDownload)
             IconTap(
                 icon = if (liked) AppIcons.Favorite else AppIcons.FavoriteBorder,
                 description = if (liked) "Quitar de las que te gustan" else "Me gusta",

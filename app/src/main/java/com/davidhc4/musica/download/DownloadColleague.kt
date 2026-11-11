@@ -34,6 +34,8 @@ class DownloadColleague(
     private val index: LibraryStore,
     private val dir: File,
     private val fetch: suspend (url: String, target: File, onProgress: (Float) -> Unit) -> Unit,
+    /** Guarda la carátula de la canción en el archivo indicado, para verla también sin internet. */
+    private val saveArtwork: suspend (track: Track, target: File) -> Unit = { _, _ -> },
 ) : BaseColleague() {
 
     private val _state = MutableStateFlow(DownloadsState())
@@ -44,6 +46,9 @@ class DownloadColleague(
     /** Dirección del archivo descargado de esa canción, o null si no está descargada. */
     fun localUri(trackId: String): String? =
         if (trackId in _state.value.ids) fileFor(trackId).takeIf { it.exists() }?.toURI()?.toString() else null
+
+    /** Carátula guardada de esa canción descargada, o null si no hay. */
+    fun artworkFile(trackId: String): File? = artFor(trackId).takeIf { it.exists() }
 
     override suspend fun handle(event: AppEvent) {
         when (event) {
@@ -59,6 +64,7 @@ class DownloadColleague(
                 jobs.remove(event.trackId)?.cancel()
                 fileFor(event.trackId).delete()
                 partFor(event.trackId).delete()
+                artFor(event.trackId).delete()
                 val s = _state.value
                 _state.value = s.copy(
                     tracks = s.tracks.filter { it.id != event.trackId },
@@ -84,6 +90,14 @@ class DownloadColleague(
                     if (id in s.inProgress) _state.value = s.copy(inProgress = s.inProgress + (id to progress))
                 }
                 if (!part.renameTo(fileFor(id))) throw java.io.IOException("No se pudo guardar")
+                // La carátula es un extra: si no se puede guardar, la canción queda descargada igual.
+                try {
+                    saveArtwork(track, artFor(id))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    artFor(id).delete()
+                }
                 val s = _state.value
                 _state.value = s.copy(tracks = listOf(track) + s.tracks, inProgress = s.inProgress - id)
                 index.save(_state.value.tracks)
@@ -103,6 +117,8 @@ class DownloadColleague(
     private fun safeName(trackId: String) = trackId.replace(Regex("[^A-Za-z0-9_-]"), "_")
 
     private fun fileFor(trackId: String) = File(dir, safeName(trackId) + ".audio")
+
+    private fun artFor(trackId: String) = File(dir, safeName(trackId) + ".jpg")
 
     private fun partFor(trackId: String) = File(dir, safeName(trackId) + ".tmp")
 }

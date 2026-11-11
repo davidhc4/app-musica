@@ -73,6 +73,35 @@ class DownloadTest {
     }
 
     @Test
+    fun `guarda la caratula con la descarga y la borra al quitarla`() = runTest {
+        val scope = mediatorScope()
+        val downloads = DownloadColleague(scope, MemoryIndex(), folder.root, fetch) { _, target -> target.writeText("foto") }
+        val mediator = EventMediator(scope, listOf(downloads))
+
+        mediator.post(AppEvent.DownloadTrack(online("a")))
+        advanceUntilIdle()
+        assertNotNull(downloads.artworkFile("audius:a"))
+
+        mediator.post(AppEvent.RemoveDownload("audius:a"))
+        advanceUntilIdle()
+        assertNull(downloads.artworkFile("audius:a"))
+        assertTrue(folder.root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun `si la caratula falla la cancion queda descargada igual`() = runTest {
+        val scope = mediatorScope()
+        val downloads = DownloadColleague(scope, MemoryIndex(), folder.root, fetch) { _, _ -> throw IOException("sin foto") }
+        val mediator = EventMediator(scope, listOf(downloads))
+
+        mediator.post(AppEvent.DownloadTrack(online("a")))
+        advanceUntilIdle()
+
+        assertEquals(listOf("audius:a"), downloads.state.value.tracks.map { it.id })
+        assertNull(downloads.artworkFile("audius:a"))
+    }
+
+    @Test
     fun `tocar descargar varias veces baja una sola vez`() = runTest {
         val (_, mediator) = setup(mediatorScope())
 
