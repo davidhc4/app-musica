@@ -57,7 +57,7 @@ class LikesTest {
     @Test
     fun `la caratula de YouTube sale del video y las demas de su direccion`() {
         val yt = Track(id = "youtube:abcdefghijk", title = "x", uri = "youtube:abcdefghijk", artworkUrl = "https://i/viejo.jpg")
-        assertEquals("https://i.ytimg.com/vi/abcdefghijk/hq720.jpg", artworkUrls(yt).first())
+        assertEquals("https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg", artworkUrls(yt).first())
         assertEquals("https://i/viejo.jpg", artworkUrls(yt).last())
         assertEquals(listOf("https://a/c.jpg"), artworkUrls(song("a").copy(artworkUrl = "https://a/c.jpg")))
         assertTrue(artworkUrls(song("a")).isEmpty())

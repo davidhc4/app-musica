@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -140,10 +141,12 @@ fun MiniPlayer(
             modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (videoSlot != null) {
-                videoSlot(Modifier.size(44.dp))
-            } else {
-                TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.size(44.dp))
+            Box(Modifier.size(44.dp)) {
+                TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.fillMaxSize())
+                // El reproductor de YouTube debe seguir a la vista: queda como miniatura en la esquina.
+                if (videoSlot != null) {
+                    videoSlot(Modifier.align(Alignment.BottomEnd).size(width = 24.dp, height = 14.dp))
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

@@ -2,9 +2,11 @@ package com.davidhc4.musica.player
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.MutableContextWrapper
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -21,6 +23,15 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
     override var listener: PlaybackEngine.Listener? = null
 
     private val main = Handler(Looper.getMainLooper())
+
+    // La vista web dibuja mejor el video cuando su contexto es la pantalla y no la aplicación.
+    // Este envoltorio permite cambiarlo cuando la pantalla se crea o se destruye.
+    private val viewContext = MutableContextWrapper(context)
+
+    /** Indica qué pantalla muestra el video, o null cuando ya no hay ninguna. */
+    fun useScreen(screen: Context?) {
+        viewContext.baseContext = screen ?: context
+    }
     private var created = false
     private var ready = false
     private var videoId: String? = null
@@ -33,8 +44,12 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
     val view: WebView by lazy { createView() }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun createView(): WebView = WebView(context).apply {
+    private fun createView(): WebView = WebView(viewContext).apply {
         created = true
+        layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
         setBackgroundColor(Color.BLACK)
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true

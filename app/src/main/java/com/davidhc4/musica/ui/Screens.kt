@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -154,7 +153,7 @@ fun LibraryScreen(
                 currentId = currentId,
                 artwork = artwork,
                 emptyIcon = AppIcons.Download,
-                emptyMessage = "Toca la flecha de descarga en el reproductor y la canción suena sin internet.",
+                emptyMessage = "Aquí queda la música libre que bajes con la flecha de descarga, para oírla sin internet. Las canciones de YouTube no se pueden descargar.",
                 rowIcon = AppIcons.DownloadDone,
                 rowAction = "Quitar la descarga",
                 onBack = { album = null },
@@ -976,9 +975,9 @@ fun PlayerScreen(
                 track = track,
                 loader = artwork,
                 cornerRadius = 24.dp,
+                // Cuadrada y tan grande como quepa a lo ancho y a lo alto, sin salirse de los márgenes.
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .aspectRatio(1f)
                     .shadow(24.dp, RoundedCornerShape(24.dp)),
             )
         }

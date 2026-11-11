@@ -103,6 +103,7 @@ fun artworkUrls(track: Track): List<String> {
     if (!isYouTubeUri(track.uri)) return listOfNotNull(track.artworkUrl)
     val id = track.uri.removePrefix(YOUTUBE_PREFIX)
     return listOf(
+        "https://i.ytimg.com/vi/$id/maxresdefault.jpg",
         "https://i.ytimg.com/vi/$id/hq720.jpg",
         "https://i.ytimg.com/vi/$id/mqdefault.jpg",
     ) + listOfNotNull(track.artworkUrl)

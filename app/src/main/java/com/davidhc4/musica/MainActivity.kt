@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as MusicaApp
+        app.youtube.useScreen(this)
         playback = MediaController.Builder(
             this,
             SessionToken(this, ComponentName(this, PlaybackService::class.java)),
@@ -63,6 +64,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        // Solo se suelta si esta pantalla sigue siendo la que usa el video (no una más nueva).
+        if (isFinishing) (application as MusicaApp).youtube.useScreen(null)
         playback?.let { MediaController.releaseFuture(it) }
         playback = null
         super.onDestroy()
