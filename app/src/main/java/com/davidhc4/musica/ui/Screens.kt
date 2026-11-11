@@ -2,6 +2,8 @@ package com.davidhc4.musica.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +57,7 @@ import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.searchTracks
 import com.davidhc4.musica.search.SearchState
+import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.update.UpdateState
 import com.davidhc4.musica.update.UpdateStatus
 
@@ -236,7 +239,8 @@ fun SearchScreen(
                 }
 
                 if (onlineActive) {
-                    item(key = "header-online") { ListHeader("En línea") }
+                    val fromYouTube = online.firstOrNull()?.let { isYouTubeUri(it.uri) } == true
+                    item(key = "header-online") { ListHeader(if (fromYouTube) "En YouTube" else "En línea") }
                 }
                 if (search.loading && online.isEmpty()) {
                     item(key = "loading") {
@@ -295,13 +299,19 @@ fun SettingsScreen(
     versionName: String,
     update: UpdateState,
     onMode: (ThemeMode) -> Unit,
+    onYouTubeKey: (String) -> Unit,
     onCheckUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenTitle(title = "Ajustes")
 
-        Column(Modifier.padding(horizontal = 20.dp)) {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+        ) {
             SectionLabel("Tema")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(ThemeMode.LIGHT to "Claro", ThemeMode.DARK to "Oscuro").forEach { (mode, label) ->
@@ -330,6 +340,10 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+            SectionLabel("YouTube")
+            YouTubeKeySection(settings.youTubeKey, onYouTubeKey)
+
+            Spacer(Modifier.height(16.dp))
             SectionLabel("Actualizaciones")
             UpdateSection(update, onCheckUpdates, onInstallUpdate)
 
@@ -338,6 +352,51 @@ fun SettingsScreen(
             Text("Música $versionName", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+private fun YouTubeKeySection(savedKey: String, onKey: (String) -> Unit) {
+    var text by rememberSaveable { mutableStateOf(savedKey) }
+    Text(
+        if (savedKey.isBlank()) "Pega aquí tu llave de YouTube para buscar y oír canciones de artistas famosos."
+        else "Llave guardada. La búsqueda usa YouTube; el video se ve mientras suena y se pausa al salir de la app.",
+        fontSize = 14.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(10.dp))
+    TextField(
+        value = text,
+        onValueChange = {
+            text = it.trim()
+            onKey(text)
+        },
+        singleLine = true,
+        placeholder = { Text("Llave de YouTube") },
+        trailingIcon = {
+            if (text.isNotEmpty()) {
+                IconTap(
+                    AppIcons.Close,
+                    "Borrar llave",
+                    {
+                        text = ""
+                        onKey("")
+                    },
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        shape = RoundedCornerShape(28.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -398,6 +457,7 @@ fun PlayerScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Float) -> Unit,
+    videoSlot: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
@@ -437,15 +497,25 @@ fun PlayerScreen(
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            TrackArtwork(
-                track = track,
-                loader = artwork,
-                cornerRadius = 24.dp,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                    .shadow(24.dp, RoundedCornerShape(24.dp)),
-            )
+            if (videoSlot != null) {
+                videoSlot(
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black)
+                )
+            } else {
+                TrackArtwork(
+                    track = track,
+                    loader = artwork,
+                    cornerRadius = 24.dp,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        .shadow(24.dp, RoundedCornerShape(24.dp)),
+                )
+            }
         }
 
         Text(

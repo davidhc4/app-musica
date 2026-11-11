@@ -8,6 +8,7 @@ Ya puedes:
 
 - Agregar canciones de tu celular a una biblioteca que se guarda entre sesiones
 - Buscar música en línea (Audius, y Jamendo cuando se active) y oír canciones completas al instante, sin tenerlas en el celular; artistas verificados y las más escuchadas primero; guardar las que te gusten en tu biblioteca
+- Con una llave gratuita de YouTube (Ajustes → YouTube), buscar y oír canciones de artistas conocidos con el reproductor oficial de YouTube: el video se ve mientras suena y se pausa al salir de la app
 - Buscar también dentro de tu biblioteca por canción, artista o álbum
 - Reproducir con el panel completo (carátula, barra de avance y controles) o desde el mini reproductor
 - Cambiar entre tema claro y oscuro

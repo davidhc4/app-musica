@@ -41,6 +41,9 @@ sealed interface AppEvent {
     // Apariencia
     data class SetThemeMode(val mode: ThemeMode) : AppEvent
 
+    // Fuentes de música
+    data class SetYouTubeKey(val key: String) : AppEvent
+
     // Actualizaciones de la app
     data object CheckForUpdates : AppEvent
     data object InstallUpdate : AppEvent

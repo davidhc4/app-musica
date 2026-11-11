@@ -126,6 +126,7 @@ fun MiniPlayer(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    videoSlot: (@Composable (Modifier) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -139,7 +140,11 @@ fun MiniPlayer(
             modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.size(44.dp))
+            if (videoSlot != null) {
+                videoSlot(Modifier.size(44.dp))
+            } else {
+                TrackArtwork(track, artwork, cornerRadius = 10.dp, modifier = Modifier.size(44.dp))
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(

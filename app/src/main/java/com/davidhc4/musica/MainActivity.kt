@@ -9,6 +9,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.davidhc4.musica.core.AppEvent
+import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.ui.MusicaRoot
 import com.davidhc4.musica.ui.MusicaTheme
 import com.davidhc4.musica.ui.isDarkTheme
@@ -33,5 +35,12 @@ class MainActivity : ComponentActivity() {
 
             MusicaTheme(settings) { MusicaRoot(app) }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // YouTube solo permite reproducir mientras el video se ve, así que se pausa al salir.
+        val app = application as MusicaApp
+        if (isYouTubeUri(app.player.state.value.track?.uri)) app.mediator.post(AppEvent.Pause)
     }
 }

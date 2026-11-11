@@ -11,9 +11,13 @@ class PrefsSettingsStore(context: Context) : SettingsStore {
     override fun load(): AppSettings = AppSettings(
         mode = runCatching { ThemeMode.valueOf(prefs.getString("modo", null) ?: "") }
             .getOrDefault(AppSettings().mode),
+        youTubeKey = prefs.getString("llave_youtube", null).orEmpty(),
     )
 
     override fun save(settings: AppSettings) {
-        prefs.edit().putString("modo", settings.mode.name).apply()
+        prefs.edit()
+            .putString("modo", settings.mode.name)
+            .putString("llave_youtube", settings.youTubeKey)
+            .apply()
     }
 }

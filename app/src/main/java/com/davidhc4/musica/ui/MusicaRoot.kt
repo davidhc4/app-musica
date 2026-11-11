@@ -27,12 +27,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.davidhc4.musica.MusicaApp
 import com.davidhc4.musica.core.AppEvent
 import com.davidhc4.musica.library.readTrack
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.PlayerState
+import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.update.UpdateStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -92,6 +95,14 @@ fun MusicaRoot(app: MusicaApp) {
     val addSongs = { picker.launch(arrayOf("audio/*")) }
 
     val currentTrack = player.track
+    // El video de YouTube va en una sola vista que se coloca sobre el hueco del panel o del mini reproductor.
+    val isVideo = isYouTubeUri(currentTrack?.uri)
+    var panelVideoBounds by remember { mutableStateOf<Rect?>(null) }
+    var miniVideoBounds by remember { mutableStateOf<Rect?>(null) }
+    val miniSlot: (@Composable (Modifier) -> Unit)? =
+        if (isVideo) ({ m -> VideoSlot(m) { miniVideoBounds = it } }) else null
+    val panelSlot: (@Composable (Modifier) -> Unit)? =
+        if (isVideo) ({ m -> VideoSlot(m) { panelVideoBounds = it } }) else null
     BackHandler(enabled = playerOpen) { playerOpen = false }
 
     Box(
@@ -130,6 +141,7 @@ fun MusicaRoot(app: MusicaApp) {
                         },
                         update = update,
                         onMode = { app.mediator.post(AppEvent.SetThemeMode(it)) },
+                        onYouTubeKey = { app.mediator.post(AppEvent.SetYouTubeKey(it)) },
                         onCheckUpdates = { app.mediator.post(AppEvent.CheckForUpdates) },
                         onInstallUpdate = { app.mediator.post(AppEvent.InstallUpdate) },
                     )
@@ -147,6 +159,7 @@ fun MusicaRoot(app: MusicaApp) {
                         app.mediator.post(if (player.isPlaying) AppEvent.Pause else AppEvent.Resume)
                     },
                     onNext = { app.mediator.post(AppEvent.Next) },
+                    videoSlot = miniSlot,
                 )
             }
             BottomBar(selected = tab, onSelect = { tab = it })
@@ -172,8 +185,24 @@ fun MusicaRoot(app: MusicaApp) {
                     onSeek = { fraction ->
                         app.mediator.post(AppEvent.SeekTo((fraction * progress.durationMs).toLong()))
                     },
+                    videoSlot = panelSlot,
                 )
             }
+        }
+
+        val videoBounds = when {
+            !isVideo -> null
+            playerOpen -> panelVideoBounds ?: miniVideoBounds
+            else -> miniVideoBounds
+        }
+        if (videoBounds != null) {
+            val inPanel = playerOpen && panelVideoBounds != null
+            VideoOverlay(
+                view = app.youtube.view,
+                bounds = videoBounds,
+                interactive = inPanel,
+                cornerRadius = if (inPanel) 16.dp else 10.dp,
+            )
         }
 
         val offered = update.latestVersion

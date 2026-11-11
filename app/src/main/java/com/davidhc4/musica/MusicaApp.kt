@@ -9,12 +9,17 @@ import com.davidhc4.musica.library.FileLibraryStore
 import com.davidhc4.musica.library.LibraryColleague
 import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
+import com.davidhc4.musica.player.RoutingEngine
+import com.davidhc4.musica.player.YouTubeEngine
 import com.davidhc4.musica.queue.QueueColleague
 import com.davidhc4.musica.search.SearchColleague
 import com.davidhc4.musica.source.AudiusSource
 import com.davidhc4.musica.source.CompositeSource
 import com.davidhc4.musica.source.JamendoConfig
 import com.davidhc4.musica.source.JamendoSource
+import com.davidhc4.musica.source.PreferredSource
+import com.davidhc4.musica.source.YouTubeSource
+import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.settings.PrefsSettingsStore
 import com.davidhc4.musica.settings.SettingsColleague
 import com.davidhc4.musica.ui.ArtworkLoader
@@ -39,6 +44,8 @@ class MusicaApp : Application() {
         private set
     lateinit var search: SearchColleague
         private set
+    lateinit var youtube: YouTubeEngine
+        private set
     lateinit var updates: UpdateColleague
         private set
     lateinit var artwork: ArtworkLoader
@@ -49,19 +56,28 @@ class MusicaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         queue = QueueColleague()
-        player = PlayerColleague(Media3Engine(this))
+        youtube = YouTubeEngine(this)
+        player = PlayerColleague(RoutingEngine(Media3Engine(this), youtube, ::isYouTubeUri))
         library = LibraryColleague(FileLibraryStore(File(filesDir, "biblioteca.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val freeMusic = CompositeSource(
+            listOfNotNull(
+                AudiusSource(),
+                JamendoConfig.CLIENT_ID.takeIf { it.isNotBlank() }?.let { JamendoSource(it) },
+            )
+        )
+        // Con llave de YouTube se busca ahí; sin llave, o si YouTube falla, en la música libre.
         search = SearchColleague(
             appScope,
-            CompositeSource(
-                listOfNotNull(
-                    AudiusSource(),
-                    JamendoConfig.CLIENT_ID.takeIf { it.isNotBlank() }?.let { JamendoSource(it) },
-                )
+            PreferredSource(
+                primary = YouTubeSource(key = { settings.state.value.youTubeKey }),
+                fallback = freeMusic,
+                primaryEnabled = { settings.state.value.youTubeKey.isNotBlank() },
             ),
+            // Cada búsqueda en YouTube gasta cupo, así que se espera un poco más a que termines de escribir.
+            debounceMs = 600L,
         )
         updates = UpdateColleague(
             scope = appScope,
