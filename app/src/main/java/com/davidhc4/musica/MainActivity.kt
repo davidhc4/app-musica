@@ -1,11 +1,20 @@
 package com.davidhc4.musica
 
+import android.Manifest
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.davidhc4.musica.player.PlaybackService
+import com.google.common.util.concurrent.ListenableFuture
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -17,9 +26,25 @@ import com.davidhc4.musica.ui.isDarkTheme
 
 class MainActivity : ComponentActivity() {
 
+    // Mantiene conectado el servicio de música mientras la app está abierta. Así, cuando algo
+    // empieza a sonar, Android deja que siga con la pantalla apagada.
+    private var playback: ListenableFuture<MediaController>? = null
+
+    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as MusicaApp
+        playback = MediaController.Builder(
+            this,
+            SessionToken(this, ComponentName(this, PlaybackService::class.java)),
+        ).buildAsync()
+        // Sin este permiso la música suena igual, pero no se verían los controles en la notificación.
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         setContent {
             val settings by app.settings.state.collectAsState()
             val dark = isDarkTheme(settings)
@@ -35,6 +60,12 @@ class MainActivity : ComponentActivity() {
 
             MusicaTheme(settings) { MusicaRoot(app) }
         }
+    }
+
+    override fun onDestroy() {
+        playback?.let { MediaController.releaseFuture(it) }
+        playback = null
+        super.onDestroy()
     }
 
     override fun onStop() {

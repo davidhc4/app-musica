@@ -1,5 +1,7 @@
 package com.davidhc4.musica.player
 
+import com.davidhc4.musica.core.Track
+
 /**
  * Reparte cada canción al motor que sabe reproducirla (audio normal o video) y calla al otro,
  * para que nunca suenen dos cosas a la vez ni lleguen avisos de un motor que ya no está en uso.
@@ -33,14 +35,14 @@ class RoutingEngine(
         }
     }
 
-    override fun load(uri: String) {
-        val next = if (isVideo(uri)) video else audio
+    override fun load(track: Track) {
+        val next = if (isVideo(track.uri)) video else audio
         if (next !== active) {
             val previous = active
             active = next
             previous.stop()
         }
-        active.load(uri)
+        active.load(track)
     }
 
     override fun play() = active.play()

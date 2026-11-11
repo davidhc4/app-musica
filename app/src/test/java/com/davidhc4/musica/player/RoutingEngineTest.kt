@@ -1,11 +1,12 @@
 package com.davidhc4.musica.player
 
+import com.davidhc4.musica.core.Track
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 private class FakeEngine(val name: String, val log: MutableList<String>) : PlaybackEngine {
     override var listener: PlaybackEngine.Listener? = null
-    override fun load(uri: String) { log += "$name load $uri" }
+    override fun load(track: Track) { log += "$name load ${track.uri}" }
     override fun play() { log += "$name play" }
     override fun pause() { log += "$name pause" }
     override fun stop() { log += "$name stop" }
@@ -14,6 +15,8 @@ private class FakeEngine(val name: String, val log: MutableList<String>) : Playb
     override fun durationMs(): Long = 0L
     override fun release() { log += "$name release" }
 }
+
+private fun song(uri: String) = Track(id = uri, title = "t", uri = uri)
 
 class RoutingEngineTest {
 
@@ -24,9 +27,9 @@ class RoutingEngineTest {
 
     @Test
     fun `cada cancion va a su motor y el otro se calla`() {
-        engine.load("https://x/a.mp3")
+        engine.load(song("https://x/a.mp3"))
         engine.play()
-        engine.load("youtube:abc")
+        engine.load(song("youtube:abc"))
         engine.play()
         engine.pause()
 
@@ -46,7 +49,7 @@ class RoutingEngineTest {
             override fun onError(message: String) { heard += "error $message" }
         }
 
-        engine.load("youtube:abc")
+        engine.load(song("youtube:abc"))
         audio.listener?.onEnded()
         audio.listener?.onIsPlayingChanged(false)
         video.listener?.onIsPlayingChanged(true)

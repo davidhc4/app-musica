@@ -47,6 +47,8 @@ class MusicaApp : Application() {
         private set
     lateinit var search: SearchColleague
         private set
+    lateinit var audio: Media3Engine
+        private set
     lateinit var youtube: YouTubeEngine
         private set
     lateinit var updates: UpdateColleague
@@ -60,7 +62,8 @@ class MusicaApp : Application() {
         super.onCreate()
         queue = QueueColleague()
         youtube = YouTubeEngine(this)
-        player = PlayerColleague(RoutingEngine(Media3Engine(this), youtube, ::isYouTubeUri))
+        audio = Media3Engine(this)
+        player = PlayerColleague(RoutingEngine(audio, youtube, ::isYouTubeUri))
         library = LibraryColleague(FileLibraryStore(File(filesDir, "biblioteca.json")))
         likes = LikesColleague(FileLibraryStore(File(filesDir, "megusta.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))

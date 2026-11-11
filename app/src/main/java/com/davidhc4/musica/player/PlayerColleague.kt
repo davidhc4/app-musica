@@ -47,7 +47,7 @@ class PlayerColleague(private val engine: PlaybackEngine) : BaseColleague() {
                 if (track == null) {
                     engine.stop()
                 } else {
-                    engine.load(track.uri)
+                    engine.load(track)
                     engine.play()
                 }
             }

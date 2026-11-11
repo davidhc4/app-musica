@@ -24,9 +24,9 @@ private class FakeEngine : PlaybackEngine {
     var playing = false
     val loads = mutableListOf<String>()
 
-    override fun load(uri: String) {
-        loadedUri = uri
-        loads += uri
+    override fun load(track: Track) {
+        loadedUri = track.uri
+        loads += track.uri
     }
 
     override fun play() {

@@ -8,6 +8,7 @@ import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.source.YOUTUBE_PREFIX
 import com.davidhc4.musica.source.isYouTubeVideoId
 
@@ -53,10 +54,10 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
         run(if (wantsToPlay) "player.loadVideoById('$id')" else "player.cueVideoById('$id')")
     }
 
-    override fun load(uri: String) {
+    override fun load(track: Track) {
         position = 0L
         duration = 0L
-        val id = uri.removePrefix(YOUTUBE_PREFIX)
+        val id = track.uri.removePrefix(YOUTUBE_PREFIX)
         if (!isYouTubeVideoId(id)) {
             videoId = null
             main.post { listener?.onError("Este video no se puede reproducir") }

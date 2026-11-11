@@ -1,5 +1,7 @@
 package com.davidhc4.musica.player
 
+import com.davidhc4.musica.core.Track
+
 /** Lo mínimo que el reproductor necesita de un motor de audio. Así se puede probar sin Android. */
 interface PlaybackEngine {
 
@@ -11,7 +13,7 @@ interface PlaybackEngine {
 
     var listener: Listener?
 
-    fun load(uri: String)
+    fun load(track: Track)
     fun play()
     fun pause()
     fun stop()
