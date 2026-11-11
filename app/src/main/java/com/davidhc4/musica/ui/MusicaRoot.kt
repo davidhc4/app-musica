@@ -75,6 +75,7 @@ fun MusicaRoot(app: MusicaApp) {
     val update by app.updates.state.collectAsState()
     val likes by app.likes.state.collectAsState()
     val downloads by app.downloads.state.collectAsState()
+    val playlists by app.playlists.state.collectAsState()
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -130,6 +131,12 @@ fun MusicaRoot(app: MusicaApp) {
                         tracks = library.tracks,
                         liked = likes.tracks,
                         downloaded = downloads.tracks,
+                        playlists = playlists.playlists,
+                        onCreatePlaylist = { app.mediator.post(AppEvent.CreatePlaylist(it)) },
+                        onDeletePlaylist = { app.mediator.post(AppEvent.DeletePlaylist(it)) },
+                        onRemoveFromPlaylist = { id, track ->
+                            app.mediator.post(AppEvent.RemoveFromPlaylist(id, track.id))
+                        },
                         onRemoveDownload = { app.mediator.post(AppEvent.RemoveDownload(it.id)) },
                         currentId = currentTrack?.id,
                         artwork = app.artwork,
@@ -208,6 +215,9 @@ fun MusicaRoot(app: MusicaApp) {
                     liked = currentTrack.id in likes.ids,
                     onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
                     queue = queue,
+                    playlists = playlists.playlists,
+                    onAddToPlaylist = { app.mediator.post(AppEvent.AddToPlaylist(it, currentTrack)) },
+                    onCreatePlaylist = { app.mediator.post(AppEvent.CreatePlaylist(it, currentTrack)) },
                     onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
                     onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },

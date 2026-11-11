@@ -12,7 +12,9 @@ import com.davidhc4.musica.ui.artworkUrls
 import kotlinx.coroutines.withContext
 import com.davidhc4.musica.library.FileLibraryStore
 import com.davidhc4.musica.library.LibraryColleague
+import com.davidhc4.musica.library.FilePlaylistStore
 import com.davidhc4.musica.library.LikesColleague
+import com.davidhc4.musica.library.PlaylistsColleague
 import com.davidhc4.musica.player.Media3Engine
 import com.davidhc4.musica.player.PlayerColleague
 import com.davidhc4.musica.player.RoutingEngine
@@ -47,6 +49,8 @@ class MusicaApp : Application() {
     lateinit var library: LibraryColleague
         private set
     lateinit var downloads: DownloadColleague
+        private set
+    lateinit var playlists: PlaylistsColleague
         private set
     lateinit var likes: LikesColleague
         private set
@@ -90,6 +94,7 @@ class MusicaApp : Application() {
             resolve = { track -> downloads.localUri(track.id)?.let { track.copy(uri = it) } ?: track },
         )
         library = LibraryColleague(FileLibraryStore(File(filesDir, "biblioteca.json")))
+        playlists = PlaylistsColleague(FilePlaylistStore(File(filesDir, "listas.json")))
         likes = LikesColleague(FileLibraryStore(File(filesDir, "megusta.json")))
         settings = SettingsColleague(PrefsSettingsStore(this))
         artwork = ArtworkLoader(this)
@@ -123,7 +128,7 @@ class MusicaApp : Application() {
         )
         mediator = EventMediator(
             scope = appScope,
-            colleagues = listOf(queue, player, library, likes, downloads, settings, search, updates),
+            colleagues = listOf(queue, player, library, likes, playlists, downloads, settings, search, updates),
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)

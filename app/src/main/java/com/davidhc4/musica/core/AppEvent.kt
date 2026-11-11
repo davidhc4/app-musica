@@ -39,6 +39,12 @@ sealed interface AppEvent {
     data class RemoveFromLibrary(val trackId: String) : AppEvent
     data class ToggleLike(val track: Track) : AppEvent
 
+    // Listas de reproducción propias
+    data class CreatePlaylist(val name: String, val firstTrack: Track? = null) : AppEvent
+    data class DeletePlaylist(val playlistId: String) : AppEvent
+    data class AddToPlaylist(val playlistId: String, val track: Track) : AppEvent
+    data class RemoveFromPlaylist(val playlistId: String, val trackId: String) : AppEvent
+
     // Descargas para oír sin internet
     data class DownloadTrack(val track: Track) : AppEvent
     data class RemoveDownload(val trackId: String) : AppEvent

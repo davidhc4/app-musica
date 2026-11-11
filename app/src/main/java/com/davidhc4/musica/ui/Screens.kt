@@ -1,6 +1,11 @@
 package com.davidhc4.musica.ui
 
 import androidx.activity.compose.BackHandler
+import com.davidhc4.musica.library.Playlist
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -97,14 +102,38 @@ fun LibraryScreen(
     onToggleLike: (Track) -> Unit = {},
     downloaded: List<Track> = emptyList(),
     onRemoveDownload: (Track) -> Unit = {},
+    playlists: List<Playlist> = emptyList(),
+    onCreatePlaylist: (String) -> Unit = {},
+    onDeletePlaylist: (String) -> Unit = {},
+    onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
 ) {
     var toRemove by remember { mutableStateOf<Track?>(null) }
+    var naming by remember { mutableStateOf(false) }
+    var toDelete by remember { mutableStateOf<Playlist?>(null) }
     // Álbum abierto: "liked", "downloads" o ninguno.
     var album by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // Una lista propia se abre como "pl:<id>". Si se borró mientras estaba abierta, se vuelve atrás.
+    val openList = playlists.firstOrNull { "pl:${it.id}" == album }
+    if (album?.startsWith("pl:") == true && openList == null) album = null
+
     if (album != null) {
         BackHandler { album = null }
-        if (album == "liked") {
+        if (openList != null) {
+            AlbumScreen(
+                title = openList.name,
+                tracks = openList.tracks,
+                currentId = currentId,
+                artwork = artwork,
+                emptyIcon = AppIcons.QueueMusic,
+                emptyMessage = "Toca el botón de agregar a una lista en el reproductor para llenarla.",
+                rowIcon = AppIcons.Close,
+                rowAction = "Quitar de la lista",
+                onBack = { album = null },
+                onPlay = onPlay,
+                onRowAction = { onRemoveFromPlaylist(openList.id, it) },
+            )
+        } else if (album == "liked") {
             AlbumScreen(
                 title = "Te gustan",
                 tracks = liked,
@@ -144,7 +173,7 @@ fun LibraryScreen(
             IconTap(AppIcons.Add, "Agregar canciones", onAddSongs, tint = MaterialTheme.colorScheme.primary)
         }
 
-        if (tracks.isEmpty() && liked.isEmpty() && downloaded.isEmpty()) {
+        if (tracks.isEmpty() && liked.isEmpty() && downloaded.isEmpty() && playlists.isEmpty()) {
             EmptyState(
                 icon = AppIcons.MusicNote,
                 title = "Tu biblioteca está vacía",
@@ -172,6 +201,26 @@ fun LibraryScreen(
                         colors = listOf(Color(0xFF2E9E6B), Color(0xFF2A7FD0)),
                     ) { album = "downloads" }
                 }
+                items(playlists, key = { "pl:${it.id}" }) { list ->
+                    AlbumRow(
+                        title = list.name,
+                        count = list.tracks.size,
+                        icon = AppIcons.QueueMusic,
+                        colors = listOf(Color(0xFF55596B), Color(0xFF2F3240)),
+                        onLongClick = { toDelete = list },
+                    ) { album = "pl:${list.id}" }
+                }
+                item(key = "album-new") {
+                    AlbumRow(
+                        title = "Nueva lista",
+                        count = null,
+                        icon = AppIcons.Add,
+                        colors = listOf(Color(0xFF3A3D4A), Color(0xFF3A3D4A)),
+                    ) { naming = true }
+                }
+                if (tracks.isNotEmpty()) {
+                    item(key = "header-songs") { ListHeader("Canciones") }
+                }
                 itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
                     SongRow(
                         track = track,
@@ -183,6 +232,33 @@ fun LibraryScreen(
                 }
             }
         }
+    }
+
+    if (naming) {
+        NameDialog(
+            title = "Nueva lista",
+            confirm = "Crear",
+            onConfirm = {
+                onCreatePlaylist(it)
+                naming = false
+            },
+            onDismiss = { naming = false },
+        )
+    }
+
+    toDelete?.let { list ->
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("Borrar la lista") },
+            text = { Text("“${list.name}” se borrará. Las canciones no se borran de tu biblioteca.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeletePlaylist(list.id)
+                    toDelete = null
+                }) { Text("Borrar") }
+            },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Cancelar") } },
+        )
     }
 
     toRemove?.let { track ->
@@ -201,14 +277,102 @@ fun LibraryScreen(
     }
 }
 
-/** Fila que abre un álbum fijo de la biblioteca, como "te gustan" o "descargadas". */
+/** Diálogo para escribir un nombre, por ejemplo el de una lista nueva. */
 @Composable
-private fun AlbumRow(title: String, count: Int, icon: ImageVector, colors: List<Color>, onOpen: () -> Unit) {
+private fun NameDialog(title: String, confirm: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            TextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text("Nombre") },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text(confirm) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+/** Diálogo para meter la canción que suena en una lista existente o en una nueva. */
+@Composable
+private fun PlaylistPicker(
+    playlists: List<Playlist>,
+    trackId: String,
+    onPick: (String) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Agregar a una lista") },
+        text = {
+            Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                playlists.forEach { list ->
+                    val already = list.tracks.any { it.id == trackId }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(enabled = !already) { onPick(list.id) }
+                            .padding(horizontal = 4.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            list.name,
+                            modifier = Modifier.weight(1f),
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (already) {
+                            Icon(
+                                AppIcons.Check,
+                                contentDescription = "Ya está en esta lista",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    placeholder = { Text("Nombre de una lista nueva") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(name) }, enabled = name.isNotBlank()) { Text("Crear y agregar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+    )
+}
+
+/** Fila que abre un álbum fijo de la biblioteca, como "te gustan" o "descargadas". */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AlbumRow(
+    title: String,
+    count: Int?,
+    icon: ImageVector,
+    colors: List<Color>,
+    onLongClick: (() -> Unit)? = null,
+    onOpen: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onOpen)
+            .combinedClickable(onClick = onOpen, onLongClick = onLongClick)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -223,13 +387,15 @@ private fun AlbumRow(title: String, count: Int, icon: ImageVector, colors: List<
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                if (count == 1) "1 canción" else "$count canciones",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (count != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    if (count == 1) "1 canción" else "$count canciones",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -709,8 +875,28 @@ fun PlayerScreen(
     onShuffle: () -> Unit = {},
     onRepeat: () -> Unit = {},
     onPlayIndex: (Int) -> Unit = {},
+    playlists: List<Playlist> = emptyList(),
+    onAddToPlaylist: (String) -> Unit = {},
+    onCreatePlaylist: (String) -> Unit = {},
 ) {
     var showQueue by rememberSaveable { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
+
+    if (picking) {
+        PlaylistPicker(
+            playlists = playlists,
+            trackId = track.id,
+            onPick = {
+                onAddToPlaylist(it)
+                picking = false
+            },
+            onCreate = {
+                onCreatePlaylist(it)
+                picking = false
+            },
+            onDismiss = { picking = false },
+        )
+    }
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
 
@@ -733,6 +919,8 @@ fun PlayerScreen(
             IconTap(AppIcons.ChevronDown, "Cerrar", onClose, iconSize = 28.dp)
             Text(
                 "Reproduciendo",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 fontSize = 13.sp,
@@ -743,6 +931,7 @@ fun PlayerScreen(
                 // YouTube pide que su reproductor siga a la vista mientras suena.
                 videoSlot(Modifier.size(width = 80.dp, height = 45.dp))
             }
+            IconTap(AppIcons.PlaylistAdd, "Agregar a una lista", { picking = true })
             IconTap(
                 icon = AppIcons.QueueMusic,
                 description = if (showQueue) "Ver la carátula" else "Ver la cola",
