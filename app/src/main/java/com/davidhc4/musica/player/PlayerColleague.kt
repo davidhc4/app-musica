@@ -34,7 +34,7 @@ class PlayerColleague(
             override fun onError(message: String) {
                 // Una canción dañada no debe congelar la cola: se avisa y se pasa a la siguiente.
                 mediator.post(AppEvent.ErrorOccurred(message))
-                mediator.post(AppEvent.TrackEnded)
+                mediator.post(AppEvent.TrackFailed)
             }
         }
     }

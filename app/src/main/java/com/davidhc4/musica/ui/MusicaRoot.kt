@@ -194,6 +194,10 @@ fun MusicaRoot(app: MusicaApp) {
                     videoSlot = panelSlot,
                     liked = currentTrack.id in likes.ids,
                     onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
+                    queue = queue,
+                    onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
+                    onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
+                    onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },
                     download = when {
                         currentTrack.id in downloads.ids -> DownloadStatus.DONE
                         currentTrack.id in downloads.inProgress -> DownloadStatus.RUNNING

@@ -30,6 +30,9 @@ sealed interface AppEvent {
     data object Next : AppEvent
     data object Previous : AppEvent
     data class SeekTo(val positionMs: Long) : AppEvent
+    data object ToggleShuffle : AppEvent
+    data object CycleRepeat : AppEvent
+    data class PlayQueueIndex(val index: Int) : AppEvent
 
     // Biblioteca
     data class AddToLibrary(val tracks: List<Track>) : AppEvent
@@ -58,5 +61,6 @@ sealed interface AppEvent {
     data class QueueChanged(val tracks: List<Track>, val currentIndex: Int) : AppEvent
     data class PlaybackStateChanged(val isPlaying: Boolean) : AppEvent
     data object TrackEnded : AppEvent
+    data object TrackFailed : AppEvent
     data class ErrorOccurred(val message: String) : AppEvent
 }

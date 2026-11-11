@@ -58,6 +58,8 @@ import com.davidhc4.musica.core.AppSettings
 import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.library.searchTracks
+import com.davidhc4.musica.queue.QueueState
+import com.davidhc4.musica.queue.RepeatMode
 import com.davidhc4.musica.search.SearchState
 import com.davidhc4.musica.source.isYouTubeUri
 import com.davidhc4.musica.update.UpdateState
@@ -645,7 +647,12 @@ fun PlayerScreen(
     download: DownloadStatus = DownloadStatus.NONE,
     downloadProgress: Float = 0f,
     onDownload: () -> Unit = {},
+    queue: QueueState = QueueState(),
+    onShuffle: () -> Unit = {},
+    onRepeat: () -> Unit = {},
+    onPlayIndex: (Int) -> Unit = {},
 ) {
+    var showQueue by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
 
@@ -677,12 +684,41 @@ fun PlayerScreen(
             if (videoSlot != null) {
                 // YouTube pide que su reproductor siga a la vista mientras suena.
                 videoSlot(Modifier.size(width = 80.dp, height = 45.dp))
-            } else {
-                Spacer(Modifier.size(48.dp))
             }
+            IconTap(
+                icon = AppIcons.QueueMusic,
+                description = if (showQueue) "Ver la carátula" else "Ver la cola",
+                onClick = { showQueue = !showQueue },
+                tint = if (showQueue) colors.primary else colors.onSurface,
+            )
         }
 
-        Box(
+        if (showQueue) {
+            LazyColumn(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+            ) {
+                item(key = "queue-title") {
+                    Text(
+                        "En cola · ${queue.tracks.size} canciones",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                    )
+                }
+                itemsIndexed(queue.tracks) { index, item ->
+                    SongRow(
+                        track = item,
+                        isCurrent = index == queue.currentIndex,
+                        artwork = artwork,
+                        onClick = { onPlayIndex(index) },
+                    )
+                }
+            }
+        } else Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -772,9 +808,15 @@ fun PlayerScreen(
             Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            IconTap(
+                icon = AppIcons.Shuffle,
+                description = if (queue.shuffle) "Quitar aleatorio" else "Aleatorio",
+                onClick = onShuffle,
+                tint = if (queue.shuffle) colors.primary else colors.onSurfaceVariant,
+            )
             IconTap(AppIcons.SkipPrevious, "Anterior", onPrevious, size = 56.dp, iconSize = 34.dp)
             IconTap(
                 icon = if (isPlaying) AppIcons.Pause else AppIcons.Play,
@@ -786,6 +828,16 @@ fun PlayerScreen(
                 tint = colors.onPrimary,
             )
             IconTap(AppIcons.SkipNext, "Siguiente", onNext, size = 56.dp, iconSize = 34.dp)
+            IconTap(
+                icon = if (queue.repeat == RepeatMode.ONE) AppIcons.RepeatOne else AppIcons.Repeat,
+                description = when (queue.repeat) {
+                    RepeatMode.OFF -> "Repetir todas"
+                    RepeatMode.ALL -> "Repetir esta canción"
+                    RepeatMode.ONE -> "No repetir"
+                },
+                onClick = onRepeat,
+                tint = if (queue.repeat == RepeatMode.OFF) colors.onSurfaceVariant else colors.primary,
+            )
         }
     }
 }
