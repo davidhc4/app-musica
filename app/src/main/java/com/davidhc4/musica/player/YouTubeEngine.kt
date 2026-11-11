@@ -92,6 +92,7 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
     private fun startCurrent() {
         val id = videoId ?: return
         run(if (wantsToPlay) "player.loadVideoById('$id')" else "player.cueVideoById('$id')")
+        if (speed != 1f) run("player.setPlaybackRate($speed)")
     }
 
     override fun load(track: Track) {
@@ -130,6 +131,13 @@ class YouTubeEngine(private val context: Context) : PlaybackEngine {
     override fun seekTo(positionMs: Long) {
         position = positionMs
         run("player.seekTo(${positionMs / 1000.0}, true)")
+    }
+
+    private var speed = 1f
+
+    override fun setSpeed(speed: Float) {
+        this.speed = speed
+        run("player.setPlaybackRate($speed)")
     }
 
     override fun positionMs(): Long = position

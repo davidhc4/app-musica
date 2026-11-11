@@ -66,6 +66,8 @@ import com.davidhc4.musica.core.ThemeMode
 import com.davidhc4.musica.core.Track
 import com.davidhc4.musica.download.DownloadsState
 import com.davidhc4.musica.download.canDownload
+import com.davidhc4.musica.library.groupByAlbum
+import com.davidhc4.musica.library.groupByArtist
 import com.davidhc4.musica.library.searchTracks
 import com.davidhc4.musica.queue.QueueState
 import com.davidhc4.musica.queue.RepeatMode
@@ -107,6 +109,7 @@ fun LibraryScreen(
     playlists: List<Playlist> = emptyList(),
     onCreatePlaylist: (String) -> Unit = {},
     onDeletePlaylist: (String) -> Unit = {},
+    onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
     sort: LibrarySort = LibrarySort.TITLE,
@@ -116,12 +119,21 @@ fun LibraryScreen(
     var toRemove by remember { mutableStateOf<Track?>(null) }
     var naming by remember { mutableStateOf(false) }
     var toDelete by remember { mutableStateOf<Playlist?>(null) }
+    var listOptions by remember { mutableStateOf<Playlist?>(null) }
+    var toRename by remember { mutableStateOf<Playlist?>(null) }
+    // Qué se ve bajo las listas: 0 canciones, 1 artistas, 2 álbumes.
+    var view by rememberSaveable { mutableStateOf(0) }
+    val artists = remember(tracks) { groupByArtist(tracks) }
+    val albums = remember(tracks) { groupByAlbum(tracks) }
     // Álbum abierto: "liked", "downloads" o ninguno.
     var album by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Una lista propia se abre como "pl:<id>". Si se borró mientras estaba abierta, se vuelve atrás.
     val openList = playlists.firstOrNull { "pl:${it.id}" == album }
     if (album?.startsWith("pl:") == true && openList == null) album = null
+    // Un artista se abre como "ar:<nombre>" y un álbum como "al:<nombre>".
+    val openGroup = artists.firstOrNull { "ar:${it.name}" == album } ?: albums.firstOrNull { "al:${it.name}" == album }
+    if ((album?.startsWith("ar:") == true || album?.startsWith("al:") == true) && openGroup == null) album = null
 
     if (album != null) {
         BackHandler { album = null }
@@ -139,6 +151,21 @@ fun LibraryScreen(
                 onPlay = onPlay,
                 menuFor = menuFor,
                 onRowAction = { onRemoveFromPlaylist(openList.id, it) },
+            )
+        } else if (openGroup != null) {
+            AlbumScreen(
+                title = openGroup.name,
+                tracks = openGroup.tracks,
+                currentId = currentId,
+                artwork = artwork,
+                emptyIcon = AppIcons.MusicNote,
+                emptyMessage = "No hay canciones aquí.",
+                rowIcon = null,
+                rowAction = "",
+                onBack = { album = null },
+                onPlay = onPlay,
+                menuFor = menuFor,
+                onRowAction = {},
             )
         } else if (album == "liked") {
             AlbumScreen(
@@ -225,7 +252,7 @@ fun LibraryScreen(
                         count = list.tracks.size,
                         icon = AppIcons.QueueMusic,
                         colors = listOf(Color(0xFF55596B), Color(0xFF2F3240)),
-                        onLongClick = { toDelete = list },
+                        onLongClick = { listOptions = list },
                     ) { album = "pl:${list.id}" }
                 }
                 item(key = "album-new") {
@@ -238,13 +265,55 @@ fun LibraryScreen(
                 }
                 if (tracks.isNotEmpty()) {
                     item(key = "header-songs") {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f)) { ListHeader("Canciones") }
-                            SortMenu(sort, onSort)
+                        Row(
+                            Modifier.padding(top = 12.dp, bottom = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("Canciones", "Artistas", "Álbumes").forEachIndexed { index, label ->
+                                    val selected = view == index
+                                    Text(
+                                        label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (selected) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.surfaceVariant
+                                            )
+                                            .clickable { view = index }
+                                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                                    )
+                                }
+                            }
+                            if (view == 0) SortMenu(sort, onSort)
                         }
                     }
                 }
-                itemsIndexed(tracks, key = { _, track -> track.id }) { index, track ->
+                if (view == 1) {
+                    items(artists, key = { "ar:${it.name}" }) { group ->
+                        AlbumRow(
+                            title = group.name,
+                            count = group.tracks.size,
+                            icon = AppIcons.Person,
+                            colors = listOf(Color(0xFF55596B), Color(0xFF2F3240)),
+                        ) { album = "ar:${group.name}" }
+                    }
+                }
+                if (view == 2) {
+                    items(albums, key = { "al:${it.name}" }) { group ->
+                        AlbumRow(
+                            title = group.name,
+                            count = group.tracks.size,
+                            icon = AppIcons.Album,
+                            colors = listOf(Color(0xFF55596B), Color(0xFF2F3240)),
+                        ) { album = "al:${group.name}" }
+                    }
+                }
+                itemsIndexed(if (view == 0) tracks else emptyList(), key = { _, track -> track.id }) { index, track ->
                     SongRow(
                         track = track,
                         isCurrent = track.id == currentId,
@@ -267,6 +336,31 @@ fun LibraryScreen(
                 naming = false
             },
             onDismiss = { naming = false },
+        )
+    }
+
+    listOptions?.let { list ->
+        ChoiceDialog(
+            title = list.name,
+            options = listOf(
+                "Cambiar el nombre" to { toRename = list },
+                "Borrar la lista" to { toDelete = list },
+            ),
+            selected = null,
+            onDismiss = { listOptions = null },
+        )
+    }
+
+    toRename?.let { list ->
+        NameDialog(
+            title = "Cambiar el nombre",
+            confirm = "Guardar",
+            initial = list.name,
+            onConfirm = {
+                onRenamePlaylist(list.id, it)
+                toRename = null
+            },
+            onDismiss = { toRename = null },
         )
     }
 
@@ -342,10 +436,58 @@ private fun SortMenu(sort: LibrarySort, onSort: (LibrarySort) -> Unit) {
     }
 }
 
+/** Diálogo con una lista de opciones para elegir una; la marcada es la que está en uso. */
+@Composable
+fun ChoiceDialog(
+    title: String,
+    options: List<Pair<String, () -> Unit>>,
+    selected: String?,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                options.forEach { (label, action) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                action()
+                                onDismiss()
+                            }
+                            .padding(horizontal = 4.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(label, modifier = Modifier.weight(1f), fontSize = 16.sp)
+                        if (label == selected) {
+                            Icon(
+                                AppIcons.Check,
+                                contentDescription = "En uso",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+    )
+}
+
 /** Diálogo para escribir un nombre, por ejemplo el de una lista nueva. */
 @Composable
-private fun NameDialog(title: String, confirm: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
+private fun NameDialog(
+    title: String,
+    confirm: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+    initial: String = "",
+) {
+    var name by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -473,7 +615,7 @@ private fun AlbumScreen(
     artwork: ArtworkLoader,
     emptyIcon: ImageVector,
     emptyMessage: String,
-    rowIcon: ImageVector,
+    rowIcon: ImageVector?,
     rowAction: String,
     onBack: () -> Unit,
     onPlay: (List<Track>, Int) -> Unit,
@@ -481,6 +623,21 @@ private fun AlbumScreen(
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
 ) {
     val liked = tracks
+    // Botón propio de cada fila (quitar me gusta, quitar descarga...). Algunas listas no tienen.
+    val rowButton: (Track) -> (@Composable () -> Unit)? = { track ->
+        if (rowIcon == null) {
+            null
+        } else {
+            {
+                IconTap(
+                    icon = rowIcon,
+                    description = rowAction,
+                    onClick = { onRowAction(track) },
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(
             Modifier
@@ -518,14 +675,7 @@ private fun AlbumScreen(
                         isCurrent = track.id == currentId,
                         artwork = artwork,
                         onClick = { onPlay(liked, index) },
-                        trailing = {
-                            IconTap(
-                                icon = rowIcon,
-                                description = rowAction,
-                                onClick = { onRowAction(track) },
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
+                        trailing = rowButton(track),
                         menu = menuFor(track),
                     )
                 }
@@ -952,28 +1102,10 @@ fun PlayerScreen(
     onRepeat: () -> Unit = {},
     onPlayIndex: (Int) -> Unit = {},
     onRemoveFromQueue: (Int) -> Unit = {},
-    playlists: List<Playlist> = emptyList(),
-    onAddToPlaylist: (String) -> Unit = {},
-    onCreatePlaylist: (String) -> Unit = {},
+    panelMenu: List<MenuAction> = emptyList(),
 ) {
     var showQueue by rememberSaveable { mutableStateOf(false) }
-    var picking by remember { mutableStateOf(false) }
 
-    if (picking) {
-        PlaylistPicker(
-            playlists = playlists,
-            trackId = track.id,
-            onPick = {
-                onAddToPlaylist(it)
-                picking = false
-            },
-            onCreate = {
-                onCreatePlaylist(it)
-                picking = false
-            },
-            onDismiss = { picking = false },
-        )
-    }
     val colors = MaterialTheme.colorScheme
     val tint = colors.primary.copy(alpha = 0.24f).compositeOver(colors.background)
 
@@ -1008,13 +1140,14 @@ fun PlayerScreen(
                 // YouTube pide que su reproductor siga a la vista mientras suena.
                 videoSlot(Modifier.size(width = 80.dp, height = 45.dp))
             }
-            IconTap(AppIcons.PlaylistAdd, "Agregar a una lista", { picking = true })
             IconTap(
                 icon = AppIcons.QueueMusic,
                 description = if (showQueue) "Ver la carátula" else "Ver la cola",
                 onClick = { showQueue = !showQueue },
                 tint = if (showQueue) colors.primary else colors.onSurface,
             )
+            // Opciones menos frecuentes: agregar a una lista, temporizador, velocidad, ecualizador.
+            if (panelMenu.isNotEmpty()) SongMenu(panelMenu)
         }
 
         if (showQueue) {

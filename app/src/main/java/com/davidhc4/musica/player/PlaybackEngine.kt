@@ -18,6 +18,9 @@ interface PlaybackEngine {
     fun pause()
     fun stop()
     fun seekTo(positionMs: Long)
+
+    /** Velocidad de reproducción: 1 es la normal. */
+    fun setSpeed(speed: Float) {}
     fun positionMs(): Long
     fun durationMs(): Long
     fun release()

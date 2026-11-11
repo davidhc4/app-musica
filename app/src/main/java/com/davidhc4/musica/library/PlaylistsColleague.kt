@@ -46,6 +46,12 @@ class PlaylistsColleague(
 
             is AppEvent.DeletePlaylist -> current.filter { it.id != event.playlistId }
 
+            is AppEvent.RenamePlaylist -> {
+                val name = event.name.trim()
+                if (name.isEmpty()) return
+                current.map { if (it.id == event.playlistId) it.copy(name = name) else it }
+            }
+
             is AppEvent.AddToPlaylist -> current.map { list ->
                 if (list.id != event.playlistId || list.tracks.any { it.id == event.track.id }) list
                 else list.copy(tracks = list.tracks + event.track)

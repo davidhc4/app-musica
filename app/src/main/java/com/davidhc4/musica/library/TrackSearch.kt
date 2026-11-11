@@ -24,3 +24,22 @@ fun searchTracks(tracks: List<Track>, query: String): List<Track> {
         }
         .sortedBy { if (it.title.normalized().startsWith(words.first())) 0 else 1 }
 }
+
+/** Un grupo de canciones con nombre: las de un artista o las de un álbum. */
+data class TrackGroup(val name: String, val tracks: List<Track>)
+
+fun groupByArtist(tracks: List<Track>): List<TrackGroup> = groupTracks(tracks, "Artista desconocido") { it.artist }
+
+fun groupByAlbum(tracks: List<Track>): List<TrackGroup> = groupTracks(tracks, "Álbum desconocido") { it.album }
+
+/**
+ * Agrupa sin distinguir mayúsculas ni acentos, ordena los grupos por nombre y deja al final las
+ * canciones que no traen el dato.
+ */
+private fun groupTracks(tracks: List<Track>, unknown: String, key: (Track) -> String?): List<TrackGroup> {
+    val (named, unnamed) = tracks.partition { !key(it).isNullOrBlank() }
+    val groups = named.groupBy { key(it)!!.trim().normalized() }
+        .map { (_, list) -> TrackGroup(list.first().let { key(it)!!.trim() }, list.sortedBy { it.title.lowercase() }) }
+        .sortedBy { it.name.normalized() }
+    return if (unnamed.isEmpty()) groups else groups + TrackGroup(unknown, unnamed)
+}

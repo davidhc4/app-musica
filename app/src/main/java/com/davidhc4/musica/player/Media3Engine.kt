@@ -91,6 +91,11 @@ class Media3Engine(context: Context) : PlaybackEngine {
 
     override fun seekTo(positionMs: Long) = player.seekTo(positionMs)
 
+    override fun setSpeed(speed: Float) = player.setPlaybackSpeed(speed)
+
+    /** Identificador de la salida de audio, para abrir el ecualizador del celular sobre ella. */
+    val audioSessionId: Int get() = player.audioSessionId
+
     override fun positionMs(): Long = player.currentPosition
 
     override fun durationMs(): Long = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L

@@ -59,7 +59,10 @@ class PlaylistsTest {
         mediator.post(AppEvent.AppStarted)
         mediator.post(AppEvent.RemoveFromPlaylist("p1", "a"))
         mediator.post(AppEvent.DeletePlaylist("p2"))
+        mediator.post(AppEvent.RenamePlaylist("p1", " Nuevo nombre "))
+        mediator.post(AppEvent.RenamePlaylist("p1", "  "))
         advanceUntilIdle()
+        assertEquals("Nuevo nombre", lists.state.value.playlists.single().name)
 
         val list = lists.state.value.playlists.single()
         assertEquals(listOf("b"), list.tracks.map { it.id })

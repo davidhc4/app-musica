@@ -30,6 +30,11 @@ sealed interface AppEvent {
     data object Next : AppEvent
     data object Previous : AppEvent
     data class SeekTo(val positionMs: Long) : AppEvent
+    data class SetSpeed(val speed: Float) : AppEvent
+
+    // Temporizador de apagado (minutes = null lo desactiva)
+    data class SetSleepTimer(val minutes: Int?) : AppEvent
+    data object SleepAtEndOfTrack : AppEvent
     data object ToggleShuffle : AppEvent
     data object CycleRepeat : AppEvent
     data class PlayQueueIndex(val index: Int) : AppEvent
@@ -48,6 +53,7 @@ sealed interface AppEvent {
     // Listas de reproducción propias
     data class CreatePlaylist(val name: String, val firstTrack: Track? = null) : AppEvent
     data class DeletePlaylist(val playlistId: String) : AppEvent
+    data class RenamePlaylist(val playlistId: String, val name: String) : AppEvent
     data class AddToPlaylist(val playlistId: String, val track: Track) : AppEvent
     data class RemoveFromPlaylist(val playlistId: String, val trackId: String) : AppEvent
 

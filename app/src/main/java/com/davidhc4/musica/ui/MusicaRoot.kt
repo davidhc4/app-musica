@@ -2,6 +2,8 @@ package com.davidhc4.musica.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.media.audiofx.AudioEffect
 import android.os.Build
 import android.widget.Toast
 import com.davidhc4.musica.library.newDeviceTracks
@@ -83,6 +85,21 @@ fun MusicaRoot(app: MusicaApp) {
     val likes by app.likes.state.collectAsState()
     val downloads by app.downloads.state.collectAsState()
     val playlists by app.playlists.state.collectAsState()
+    val sleep by app.sleepTimer.state.collectAsState()
+
+    // Diálogo abierto desde el menú del panel: "sleep", "speed" o ninguno.
+    var dialog by remember { mutableStateOf<String?>(null) }
+
+    // Ecualizador que trae el celular, si tiene uno.
+    val equalizerIntent = remember {
+        Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+            .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, app.audio.audioSessionId)
+            .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+            .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+    }
+    val hasEqualizer = remember { equalizerIntent.resolveActivity(context.packageManager) != null }
+    val equalizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+    val openEqualizer: () -> Unit = { runCatching { equalizer.launch(equalizerIntent) } }
     val progress by rememberPlaybackProgress(app.player, player)
 
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -197,6 +214,7 @@ fun MusicaRoot(app: MusicaApp) {
                         playlists = playlists.playlists,
                         onCreatePlaylist = { app.mediator.post(AppEvent.CreatePlaylist(it)) },
                         onDeletePlaylist = { app.mediator.post(AppEvent.DeletePlaylist(it)) },
+                        onRenamePlaylist = { id, name -> app.mediator.post(AppEvent.RenamePlaylist(id, name)) },
                         onRemoveFromPlaylist = { id, track ->
                             app.mediator.post(AppEvent.RemoveFromPlaylist(id, track.id))
                         },
@@ -279,9 +297,17 @@ fun MusicaRoot(app: MusicaApp) {
                     liked = currentTrack.id in likes.ids,
                     onToggleLike = { app.mediator.post(AppEvent.ToggleLike(currentTrack)) },
                     queue = queue,
-                    playlists = playlists.playlists,
-                    onAddToPlaylist = { app.mediator.post(AppEvent.AddToPlaylist(it, currentTrack)) },
-                    onCreatePlaylist = { app.mediator.post(AppEvent.CreatePlaylist(it, currentTrack)) },
+                    panelMenu = buildList {
+                        add(MenuAction("Agregar a una lista") { pickListFor = currentTrack })
+                        add(
+                            MenuAction(if (sleep.active) "Temporizador de apagado · activo" else "Temporizador de apagado") {
+                                dialog = "sleep"
+                            }
+                        )
+                        add(MenuAction("Velocidad · ${speedLabel(player.speed)}") { dialog = "speed" })
+                        // El ecualizador del celular solo actúa sobre el audio propio, no sobre YouTube.
+                        if (!isVideo && hasEqualizer) add(MenuAction("Ecualizador") { openEqualizer() })
+                    },
                     onShuffle = { app.mediator.post(AppEvent.ToggleShuffle) },
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
                     onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },
@@ -303,6 +329,34 @@ fun MusicaRoot(app: MusicaApp) {
                 view = app.youtube.view,
                 bounds = videoBounds,
                 interactive = playerOpen && panelVideoBounds != null,
+            )
+        }
+
+        when (dialog) {
+            "sleep" -> ChoiceDialog(
+                title = "Temporizador de apagado",
+                options = listOf(
+                    "15 minutos" to { app.mediator.post(AppEvent.SetSleepTimer(15)) },
+                    "30 minutos" to { app.mediator.post(AppEvent.SetSleepTimer(30)) },
+                    "60 minutos" to { app.mediator.post(AppEvent.SetSleepTimer(60)) },
+                    "Al terminar la canción" to { app.mediator.post(AppEvent.SleepAtEndOfTrack) },
+                    "Desactivado" to { app.mediator.post(AppEvent.SetSleepTimer(null)) },
+                ),
+                selected = when {
+                    sleep.atEndOfTrack -> "Al terminar la canción"
+                    sleep.minutes != null -> "${sleep.minutes} minutos"
+                    else -> "Desactivado"
+                },
+                onDismiss = { dialog = null },
+            )
+
+            "speed" -> ChoiceDialog(
+                title = "Velocidad",
+                options = listOf(0.75f, 1f, 1.25f, 1.5f, 2f).map { value ->
+                    speedLabel(value) to { app.mediator.post(AppEvent.SetSpeed(value)) }
+                },
+                selected = speedLabel(player.speed),
+                onDismiss = { dialog = null },
             )
         }
 
@@ -341,3 +395,7 @@ fun MusicaRoot(app: MusicaApp) {
         }
     }
 }
+
+/** Escribe la velocidad como "1×" o "1,25×". */
+private fun speedLabel(speed: Float): String =
+    (if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString().replace('.', ',')) + "×"

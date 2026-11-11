@@ -56,6 +56,11 @@ class RoutingEngine(
 
     override fun seekTo(positionMs: Long) = active.seekTo(positionMs)
 
+    override fun setSpeed(speed: Float) {
+        audio.setSpeed(speed)
+        video.setSpeed(speed)
+    }
+
     override fun positionMs(): Long = active.positionMs()
 
     override fun durationMs(): Long = active.durationMs()

@@ -15,6 +15,13 @@
     <!-- Para que la app pueda instalar sus propias actualizaciones. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Para saber si el celular trae un ecualizador que se pueda abrir. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
+        </intent>
+    </queries>
+
     <application
         android:name=".MusicaApp"
         android:allowBackup="false"

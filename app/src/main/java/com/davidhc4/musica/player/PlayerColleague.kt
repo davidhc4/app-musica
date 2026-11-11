@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 data class PlayerState(
     val track: Track? = null,
     val isPlaying: Boolean = false,
+    val speed: Float = 1f,
 )
 
 /** Controla el audio. No sabe de la cola: solo reacciona a "cambió la canción actual". */
@@ -62,6 +63,12 @@ class PlayerColleague(
             is AppEvent.Resume -> if (_state.value.track != null) engine.play()
 
             is AppEvent.SeekTo -> engine.seekTo(event.positionMs)
+
+            is AppEvent.SetSpeed -> {
+                val speed = event.speed.coerceIn(0.5f, 2f)
+                engine.setSpeed(speed)
+                _state.value = _state.value.copy(speed = speed)
+            }
 
             is AppEvent.PlaybackStateChanged ->
                 _state.value = _state.value.copy(isPlaying = event.isPlaying)

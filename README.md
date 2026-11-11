@@ -19,6 +19,8 @@ Ya puedes:
 - Buscar a la vez en YouTube y en la música libre, y descargar la música libre desde la misma lista
 - Encontrar sola la música guardada en el celular, ordenar la biblioteca y retomar al abrir la app lo que estabas oyendo
 - Menú de opciones en cada canción: reproducir a continuación, agregar a la cola o a una lista, me gusta y descargar
+- Temporizador de apagado, velocidad de reproducción y ecualizador del celular, desde el menú del reproductor
+- Ver la biblioteca por canciones, artistas o álbumes, y cambiar el nombre de las listas
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 
