@@ -42,6 +42,7 @@ sealed interface AppEvent {
     data class PlayQueueIndex(val index: Int) : AppEvent
     data class PlayNext(val track: Track) : AppEvent
     data class RemoveFromQueue(val index: Int) : AppEvent
+    data class MoveInQueue(val from: Int, val to: Int) : AppEvent
 
     // Retomar lo que se estaba oyendo
     data class RestoreQueue(
@@ -64,6 +65,7 @@ sealed interface AppEvent {
     data class RenamePlaylist(val playlistId: String, val name: String) : AppEvent
     data class AddToPlaylist(val playlistId: String, val track: Track) : AppEvent
     data class RemoveFromPlaylist(val playlistId: String, val trackId: String) : AppEvent
+    data class MoveInPlaylist(val playlistId: String, val from: Int, val to: Int) : AppEvent
 
     // Descargas para oír sin internet
     data class DownloadTrack(val track: Track) : AppEvent

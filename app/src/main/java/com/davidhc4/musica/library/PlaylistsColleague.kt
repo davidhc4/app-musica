@@ -57,6 +57,13 @@ class PlaylistsColleague(
                 else list.copy(tracks = list.tracks + event.track)
             }
 
+            is AppEvent.MoveInPlaylist -> current.map { list ->
+                val from = event.from
+                val to = event.to
+                if (list.id != event.playlistId || from !in list.tracks.indices || to !in list.tracks.indices) list
+                else list.copy(tracks = list.tracks.toMutableList().apply { add(to, removeAt(from)) })
+            }
+
             is AppEvent.RemoveFromPlaylist -> current.map { list ->
                 if (list.id != event.playlistId) list
                 else list.copy(tracks = list.tracks.filter { it.id != event.trackId })

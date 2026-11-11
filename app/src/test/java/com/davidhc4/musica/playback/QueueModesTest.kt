@@ -126,6 +126,32 @@ class QueueModesTest {
     }
 
     @Test
+    fun `mover canciones en la cola no cambia la que suena`() = runTest {
+        val s = Setup(this)
+        s.mediator.post(AppEvent.PlayTracks(songs, 1))
+        // La que suena (b) baja al final.
+        s.mediator.post(AppEvent.MoveInQueue(1, 3))
+        advanceUntilIdle()
+        assertEquals(listOf("a", "c", "d", "b"), s.order)
+        assertEquals("b", s.current)
+
+        // Una de antes pasa a después de la que suena.
+        s.mediator.post(AppEvent.MoveInQueue(0, 3))
+        advanceUntilIdle()
+        assertEquals(listOf("c", "d", "b", "a"), s.order)
+        assertEquals("b", s.current)
+
+        // Una de después pasa a antes.
+        s.mediator.post(AppEvent.MoveInQueue(3, 0))
+        s.mediator.post(AppEvent.MoveInQueue(9, 0))
+        advanceUntilIdle()
+        assertEquals(listOf("a", "c", "d", "b"), s.order)
+        assertEquals("b", s.current)
+        // Nunca se reinició la canción.
+        assertEquals(listOf<String?>("b"), s.played)
+    }
+
+    @Test
     fun `se puede saltar a cualquier cancion de la cola`() = runTest {
         val s = Setup(this)
         s.mediator.post(AppEvent.PlayTracks(songs, 0))

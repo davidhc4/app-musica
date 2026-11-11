@@ -110,6 +110,7 @@ fun LibraryScreen(
     onDeletePlaylist: (String) -> Unit = {},
     onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
+    onMoveInPlaylist: (String, Int, Int) -> Unit = { _, _, _ -> },
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
     onDownloadAll: (List<Track>) -> Unit = {},
     sort: LibrarySort = LibrarySort.TITLE,
@@ -151,6 +152,7 @@ fun LibraryScreen(
                 onPlay = onPlay,
                 menuFor = menuFor,
                 onDownloadAll = onDownloadAll,
+                onMove = { from, to -> onMoveInPlaylist(openList.id, from, to) },
                 onRowAction = { onRemoveFromPlaylist(openList.id, it) },
             )
         } else if (openGroup != null) {
@@ -438,6 +440,30 @@ private fun SortMenu(sort: LibrarySort, onSort: (LibrarySort) -> Unit) {
     }
 }
 
+/** Flechas para subir o bajar una canción dentro de una lista. */
+@Composable
+private fun MoveArrows(index: Int, lastIndex: Int, onMove: (Int, Int) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row {
+        IconTap(
+            icon = AppIcons.ChevronUp,
+            description = "Subir",
+            onClick = { if (index > 0) onMove(index, index - 1) },
+            size = 36.dp,
+            iconSize = 22.dp,
+            tint = colors.onSurfaceVariant.copy(alpha = if (index > 0) 1f else 0.3f),
+        )
+        IconTap(
+            icon = AppIcons.ChevronDown,
+            description = "Bajar",
+            onClick = { if (index < lastIndex) onMove(index, index + 1) },
+            size = 36.dp,
+            iconSize = 22.dp,
+            tint = colors.onSurfaceVariant.copy(alpha = if (index < lastIndex) 1f else 0.3f),
+        )
+    }
+}
+
 /** Diálogo con una lista de opciones para elegir una; la marcada es la que está en uso. */
 @Composable
 fun ChoiceDialog(
@@ -624,6 +650,8 @@ private fun AlbumScreen(
     onRowAction: (Track) -> Unit,
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
     onDownloadAll: ((List<Track>) -> Unit)? = null,
+    /** Si se da, las filas muestran flechas para reordenar y el botón propio pasa al menú. */
+    onMove: ((Int, Int) -> Unit)? = null,
 ) {
     val liked = tracks
     // Botón propio de cada fila (quitar me gusta, quitar descarga...). Algunas listas no tienen.
@@ -682,8 +710,14 @@ private fun AlbumScreen(
                         isCurrent = track.id == currentId,
                         artwork = artwork,
                         onClick = { onPlay(liked, index) },
-                        trailing = rowButton(track),
-                        menu = menuFor(track),
+                        trailing = if (onMove != null) {
+                            { MoveArrows(index, liked.lastIndex, onMove) }
+                        } else {
+                            rowButton(track)
+                        },
+                        menu = menuFor(track) + listOfNotNull(
+                            if (onMove != null && rowIcon != null) MenuAction(rowAction) { onRowAction(track) } else null
+                        ),
                     )
                 }
             }
@@ -1160,6 +1194,7 @@ fun PlayerScreen(
     onRepeat: () -> Unit = {},
     onPlayIndex: (Int) -> Unit = {},
     onRemoveFromQueue: (Int) -> Unit = {},
+    onMoveInQueue: (Int, Int) -> Unit = { _, _ -> },
     panelMenu: List<MenuAction> = emptyList(),
 ) {
     var showQueue by rememberSaveable { mutableStateOf(false) }
@@ -1226,16 +1261,12 @@ fun PlayerScreen(
                         isCurrent = index == queue.currentIndex,
                         artwork = artwork,
                         onClick = { onPlayIndex(index) },
-                        trailing = {
-                            IconTap(
-                                icon = AppIcons.Close,
-                                description = "Quitar de la cola",
-                                onClick = { onRemoveFromQueue(index) },
-                                size = 40.dp,
-                                iconSize = 20.dp,
-                                tint = colors.onSurfaceVariant,
-                            )
-                        },
+                        trailing = { MoveArrows(index, queue.tracks.lastIndex, onMoveInQueue) },
+                        menu = listOf(
+                            MenuAction("Mover al principio") { onMoveInQueue(index, 0) },
+                            MenuAction("Mover al final") { onMoveInQueue(index, queue.tracks.lastIndex) },
+                            MenuAction("Quitar de la cola") { onRemoveFromQueue(index) },
+                        ),
                     )
                 }
             }

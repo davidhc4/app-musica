@@ -116,6 +116,23 @@ class QueueColleague(
                 }
             }
 
+            // Cambiar una canción de lugar no interrumpe la que suena.
+            is AppEvent.MoveInQueue -> {
+                val from = event.from
+                val to = event.to
+                if (from == to || from !in s.tracks.indices || to !in s.tracks.indices) return
+                val moved = s.tracks.toMutableList().apply { add(to, removeAt(from)) }
+                val current = s.currentIndex
+                val newCurrent = when {
+                    from == current -> to
+                    from < current && to >= current -> current - 1
+                    from > current && to <= current -> current + 1
+                    else -> current
+                }
+                if (!s.shuffle) ordered = moved
+                update(s.copy(tracks = moved, currentIndex = newCurrent))
+            }
+
             // Al reabrir la app: se deja todo como estaba, sin empezar a sonar.
             is AppEvent.RestoreQueue -> {
                 if (event.tracks.isEmpty() || s.current != null) return

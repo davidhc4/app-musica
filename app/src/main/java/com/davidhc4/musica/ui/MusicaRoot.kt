@@ -226,6 +226,7 @@ fun MusicaRoot(app: MusicaApp) {
                         onCreatePlaylist = { app.mediator.post(AppEvent.CreatePlaylist(it)) },
                         onDeletePlaylist = { app.mediator.post(AppEvent.DeletePlaylist(it)) },
                         onRenamePlaylist = { id, name -> app.mediator.post(AppEvent.RenamePlaylist(id, name)) },
+                        onMoveInPlaylist = { id, from, to -> app.mediator.post(AppEvent.MoveInPlaylist(id, from, to)) },
                         onRemoveFromPlaylist = { id, track ->
                             app.mediator.post(AppEvent.RemoveFromPlaylist(id, track.id))
                         },
@@ -324,6 +325,7 @@ fun MusicaRoot(app: MusicaApp) {
                     onRepeat = { app.mediator.post(AppEvent.CycleRepeat) },
                     onPlayIndex = { app.mediator.post(AppEvent.PlayQueueIndex(it)) },
                     onRemoveFromQueue = { app.mediator.post(AppEvent.RemoveFromQueue(it)) },
+                    onMoveInQueue = { from, to -> app.mediator.post(AppEvent.MoveInQueue(from, to)) },
                     download = downloadStatus(currentTrack, downloads),
                     downloadProgress = downloads.inProgress[currentTrack.id] ?: 0f,
                     onDownload = { toggleDownload(currentTrack) },

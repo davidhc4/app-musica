@@ -70,6 +70,21 @@ class PlaylistsTest {
     }
 
     @Test
+    fun `se pueden reordenar las canciones de una lista`() = runTest {
+        val store = MemoryPlaylists(listOf(Playlist("p1", "Uno", listOf(tune("a"), tune("b"), tune("c")))))
+        val lists = PlaylistsColleague(store, ids())
+        val mediator = EventMediator(mediatorScope(), listOf(lists))
+
+        mediator.post(AppEvent.AppStarted)
+        mediator.post(AppEvent.MoveInPlaylist("p1", 2, 0))
+        mediator.post(AppEvent.MoveInPlaylist("p1", 5, 0))
+        advanceUntilIdle()
+
+        assertEquals(listOf("c", "a", "b"), lists.state.value.playlists.single().tracks.map { it.id })
+        assertEquals(1, store.saves)
+    }
+
+    @Test
     fun `un nombre vacio no crea nada`() = runTest {
         val store = MemoryPlaylists()
         val lists = PlaylistsColleague(store, ids())
