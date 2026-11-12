@@ -36,10 +36,10 @@ class DownloadColleague(
     private val index: LibraryStore,
     private val dir: File,
     private val fetch: suspend (url: String, target: File, onProgress: (Float) -> Unit) -> Unit,
-    /** Guarda la carátula de la canción en el archivo indicado, para verla también sin internet. */
-    private val saveArtwork: suspend (track: Track, target: File) -> Unit = { _, _ -> },
     /** Tope de espacio para las descargas, en bytes. Cero significa sin límite. */
     private val limitBytes: () -> Long = { 0L },
+    /** Guarda la carátula de la canción en el archivo indicado, para verla también sin internet. */
+    private val saveArtwork: suspend (track: Track, target: File) -> Unit = { _, _ -> },
 ) : BaseColleague() {
 
     private val _state = MutableStateFlow(DownloadsState())
