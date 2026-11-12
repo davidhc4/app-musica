@@ -93,6 +93,10 @@ class Media3Engine(context: Context) : PlaybackEngine {
 
     override fun setSpeed(speed: Float) = player.setPlaybackSpeed(speed)
 
+    override fun setSkipSilence(enabled: Boolean) {
+        player.skipSilenceEnabled = enabled
+    }
+
     /** Identificador de la salida de audio, para abrir el ecualizador del celular sobre ella. */
     val audioSessionId: Int get() = player.audioSessionId
 

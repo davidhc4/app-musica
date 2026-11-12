@@ -1,6 +1,10 @@
 package com.davidhc4.musica
 
 import android.app.Application
+import android.content.Context
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.util.Log
 import android.widget.Toast
 import com.davidhc4.musica.core.BaseColleague
@@ -132,5 +136,41 @@ class MusicaApp : Application() {
             onError = { t, event -> Log.e("Musica", "Falló al atender $event", t) },
         )
         mediator.post(AppEvent.AppStarted)
+        // Se aplican las opciones de reproducción guardadas.
+        val saved = settings.state.value
+        if (saved.skipSilence) mediator.post(AppEvent.SetSkipSilence(true))
+        if (saved.speed != 1f) mediator.post(AppEvent.SetSpeed(saved.speed))
+        watchAudioOutputs()
+    }
+
+    /**
+     * Si está activada la opción, reanuda la música al conectar audífonos o un equipo Bluetooth.
+     * Android avisa una primera vez con lo que ya estaba conectado; ese aviso se ignora.
+     */
+    private fun watchAudioOutputs() {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val outputs = setOf(
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_USB_HEADSET,
+        )
+        var armed = false
+        audioManager.registerAudioDeviceCallback(
+            object : AudioDeviceCallback() {
+                override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+                    if (!armed) {
+                        armed = true
+                        return
+                    }
+                    val connected = addedDevices.any { it.isSink && it.type in outputs }
+                    val state = player.state.value
+                    if (connected && settings.state.value.resumeOnConnect && state.track != null && !state.isPlaying) {
+                        mediator.post(AppEvent.Resume)
+                    }
+                }
+            },
+            null,
+        )
     }
 }

@@ -82,6 +82,8 @@ sealed interface AppEvent {
 
     // Fuentes de música
     data class SetLibrarySort(val sort: LibrarySort) : AppEvent
+    data class SetSkipSilence(val enabled: Boolean) : AppEvent
+    data class SetResumeOnConnect(val enabled: Boolean) : AppEvent
 
     // Actualizaciones de la app
     data object CheckForUpdates : AppEvent

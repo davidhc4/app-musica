@@ -4,6 +4,11 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
 import android.media.audiofx.AudioEffect
+import android.media.RingtoneManager
+import com.davidhc4.musica.download.canDownload
+import com.davidhc4.musica.library.groupByAlbum
+import com.davidhc4.musica.library.groupByArtist
+import com.davidhc4.musica.library.normalized
 import android.os.Build
 import android.provider.Settings
 import android.os.PowerManager
@@ -170,6 +175,18 @@ fun MusicaRoot(app: MusicaApp) {
 
     // Opciones del menú de tres puntos, iguales para una canción en cualquier pantalla.
     var pickListFor by remember { mutableStateOf<Track?>(null) }
+    var detailsFor by remember { mutableStateOf<Track?>(null) }
+    // Artista o álbum que hay que abrir en la Biblioteca.
+    var libraryRequest by remember { mutableStateOf<String?>(null) }
+    val openInLibrary: (String, String) -> Unit = { prefix, name ->
+        // El nombre del grupo es el de la primera canción que lo forma; se busca sin mayúsculas ni acentos.
+        val groups = if (prefix == "ar:") groupByArtist(library.tracks) else groupByAlbum(library.tracks)
+        groups.firstOrNull { it.name.normalized() == name.trim().normalized() }?.let {
+            libraryRequest = prefix + it.name
+            tab = 0
+            playerOpen = false
+        }
+    }
     val menuFor: (Track) -> List<MenuAction> = { track ->
         buildList {
             add(MenuAction("Reproducir a continuación") { app.mediator.post(AppEvent.PlayNext(track)) })
@@ -186,6 +203,20 @@ fun MusicaRoot(app: MusicaApp) {
                 DownloadStatus.DONE -> add(MenuAction("Quitar la descarga") { app.mediator.post(AppEvent.RemoveDownload(track.id)) })
                 DownloadStatus.NONE -> Unit
             }
+            // Ir al artista o al álbum solo tiene sentido si están en la biblioteca.
+            val artist = track.artist
+            if (artist != null && library.tracks.any { it.artist?.trim()?.normalized() == artist.trim().normalized() }) {
+                add(MenuAction("Ver artista") { openInLibrary("ar:", artist) })
+            }
+            val albumName = track.album
+            if (albumName != null && library.tracks.any { it.album?.trim()?.normalized() == albumName.trim().normalized() }) {
+                add(MenuAction("Ver álbum") { openInLibrary("al:", albumName) })
+            }
+            add(MenuAction("Compartir") { shareTrack(context, track) })
+            if (track.uri.startsWith("content://media/")) {
+                add(MenuAction("Usar como tono de llamada") { setAsRingtone(context, track) })
+            }
+            add(MenuAction("Detalles") { detailsFor = track })
         }
     }
 
@@ -214,6 +245,8 @@ fun MusicaRoot(app: MusicaApp) {
                     0 -> LibraryScreen(
                         tracks = remember(library, settings.librarySort) { sortLibrary(library, settings.librarySort) },
                         menuFor = menuFor,
+                        openRequest = libraryRequest,
+                        onOpenRequestHandled = { libraryRequest = null },
                         onDownloadAll = { tracks ->
                             tracks.forEach { app.mediator.post(AppEvent.DownloadTrack(it)) }
                         },
@@ -264,6 +297,10 @@ fun MusicaRoot(app: MusicaApp) {
                         downloads = downloads,
                         onDownloadLimit = { app.mediator.post(AppEvent.SetDownloadLimit(it)) },
                         onClearDownloads = { app.mediator.post(AppEvent.ClearDownloads) },
+                        onSkipSilence = { app.mediator.post(AppEvent.SetSkipSilence(it)) },
+                        onResumeOnConnect = { app.mediator.post(AppEvent.SetResumeOnConnect(it)) },
+                        onSpeed = { app.mediator.post(AppEvent.SetSpeed(it)) },
+                        onEqualizer = if (hasEqualizer) openEqualizer else null,
                         backgroundAllowed = backgroundAllowed,
                         onAllowBackground = allowBackground,
                         onCheckUpdates = { app.mediator.post(AppEvent.CheckForUpdates) },
@@ -361,6 +398,28 @@ fun MusicaRoot(app: MusicaApp) {
             )
         }
 
+        detailsFor?.let { track ->
+            AlertDialog(
+                onDismissRequest = { detailsFor = null },
+                title = { Text(track.title) },
+                text = {
+                    Text(
+                        listOfNotNull(
+                            "Artista: ${track.artistOrUnknown()}",
+                            track.album?.let { "Álbum: $it" },
+                            if (track.durationMs > 0) "Duración: ${formatTime(track.durationMs)}" else null,
+                            "Origen: " + when {
+                                track.id in downloads.ids -> "música en línea, descargada en el celular"
+                                canDownload(track) -> "música en línea (necesita internet)"
+                                else -> "archivo del celular"
+                            },
+                        ).joinToString("\n")
+                    )
+                },
+                confirmButton = { TextButton(onClick = { detailsFor = null }) { Text("Cerrar") } },
+            )
+        }
+
         pickListFor?.let { track ->
             PlaylistPicker(
                 playlists = playlists.playlists,
@@ -397,6 +456,37 @@ fun MusicaRoot(app: MusicaApp) {
     }
 }
 
-/** Escribe la velocidad como "1×" o "1,25×". */
-private fun speedLabel(speed: Float): String =
-    (if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString().replace('.', ',')) + "×"
+/** Comparte la canción: el archivo si está en el celular, o su nombre si es música en línea. */
+private fun shareTrack(context: Context, track: Track) {
+    val send = Intent(Intent.ACTION_SEND)
+    if (track.uri.startsWith("content://")) {
+        send.setType("audio/*")
+            .putExtra(Intent.EXTRA_STREAM, Uri.parse(track.uri))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    } else {
+        send.setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, listOfNotNull(track.title, track.artist).joinToString(" — "))
+    }
+    runCatching { context.startActivity(Intent.createChooser(send, "Compartir")) }
+}
+
+/** Pone la canción como tono de llamada. La primera vez Android pide permitir cambiar ajustes. */
+private fun setAsRingtone(context: Context, track: Track) {
+    if (!Settings.System.canWrite(context)) {
+        Toast.makeText(context, "Permite a Música modificar ajustes y vuelve a intentarlo", Toast.LENGTH_LONG).show()
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}"))
+            )
+        }
+        return
+    }
+    val done = runCatching {
+        RingtoneManager.setActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE, Uri.parse(track.uri))
+    }.isSuccess
+    Toast.makeText(
+        context,
+        if (done) "“${track.title}” es ahora tu tono de llamada" else "No se pudo cambiar el tono de llamada",
+        Toast.LENGTH_LONG,
+    ).show()
+}

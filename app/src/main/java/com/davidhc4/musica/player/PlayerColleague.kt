@@ -64,6 +64,8 @@ class PlayerColleague(
 
             is AppEvent.SeekTo -> engine.seekTo(event.positionMs)
 
+            is AppEvent.SetSkipSilence -> engine.setSkipSilence(event.enabled)
+
             is AppEvent.SetSpeed -> {
                 val speed = event.speed.coerceIn(0.5f, 2f)
                 engine.setSpeed(speed)

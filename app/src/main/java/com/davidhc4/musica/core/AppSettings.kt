@@ -10,4 +10,10 @@ data class AppSettings(
     val librarySort: LibrarySort = LibrarySort.TITLE,
     /** Tope de espacio para las descargas, en megas. Cero significa sin límite. */
     val downloadLimitMb: Int = 0,
+    /** Se salta los silencios largos dentro de las canciones. */
+    val skipSilence: Boolean = false,
+    /** Reanuda la música al conectar audífonos o un equipo Bluetooth. */
+    val resumeOnConnect: Boolean = false,
+    /** Última velocidad elegida; se conserva al reabrir la app. */
+    val speed: Float = 1f,
 )

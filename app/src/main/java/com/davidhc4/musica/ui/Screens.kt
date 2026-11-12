@@ -38,11 +38,14 @@ import androidx.compose.material3.DropdownMenuItem
 import com.davidhc4.musica.core.LibrarySort
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import com.davidhc4.musica.library.normalized
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -111,6 +114,9 @@ fun LibraryScreen(
     onRenamePlaylist: (String, String) -> Unit = { _, _ -> },
     onRemoveFromPlaylist: (String, Track) -> Unit = { _, _ -> },
     onMoveInPlaylist: (String, Int, Int) -> Unit = { _, _, _ -> },
+    /** Grupo que otra pantalla pidió abrir ("ar:<artista>" o "al:<álbum>"); se avisa al abrirlo. */
+    openRequest: String? = null,
+    onOpenRequestHandled: () -> Unit = {},
     menuFor: (Track) -> List<MenuAction> = { emptyList() },
     onDownloadAll: (List<Track>) -> Unit = {},
     sort: LibrarySort = LibrarySort.TITLE,
@@ -128,12 +134,22 @@ fun LibraryScreen(
     val albums = remember(tracks) { groupByAlbum(tracks) }
     // Álbum abierto: "liked", "downloads" o ninguno.
     var album by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openRequest) {
+        if (openRequest != null) {
+            album = openRequest
+            onOpenRequestHandled()
+        }
+    }
 
     // Una lista propia se abre como "pl:<id>". Si se borró mientras estaba abierta, se vuelve atrás.
     val openList = playlists.firstOrNull { "pl:${it.id}" == album }
     if (album?.startsWith("pl:") == true && openList == null) album = null
     // Un artista se abre como "ar:<nombre>" y un álbum como "al:<nombre>".
-    val openGroup = artists.firstOrNull { "ar:${it.name}" == album } ?: albums.firstOrNull { "al:${it.name}" == album }
+    // Se compara sin mayúsculas ni acentos, porque el nombre visible depende del orden de la lista.
+    val opened = album
+    fun isOpen(prefix: String, name: String) =
+        opened != null && opened.startsWith(prefix) && opened.removePrefix(prefix).normalized() == name.normalized()
+    val openGroup = artists.firstOrNull { isOpen("ar:", it.name) } ?: albums.firstOrNull { isOpen("al:", it.name) }
     if ((album?.startsWith("ar:") == true || album?.startsWith("al:") == true) && openGroup == null) album = null
 
     if (album != null) {
@@ -911,6 +927,10 @@ fun SettingsScreen(
     downloads: DownloadsState = DownloadsState(),
     onDownloadLimit: (Int) -> Unit = {},
     onClearDownloads: () -> Unit = {},
+    onSkipSilence: (Boolean) -> Unit = {},
+    onResumeOnConnect: (Boolean) -> Unit = {},
+    onSpeed: (Float) -> Unit = {},
+    onEqualizer: (() -> Unit)? = null,
     onCheckUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
@@ -953,6 +973,10 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+            SectionLabel("Reproducción y audio")
+            PlaybackSection(settings, onSkipSilence, onResumeOnConnect, onSpeed, onEqualizer)
 
             Spacer(Modifier.height(16.dp))
             SectionLabel("Música en segundo plano")
@@ -1057,6 +1081,98 @@ private fun DownloadsSection(
                 }) { Text("Borrar") }
             },
             dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancelar") } },
+        )
+    }
+}
+
+/** Una opción de Ajustes con título, explicación y un interruptor. */
+@Composable
+private fun SwitchRow(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onChange(!checked) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(detail, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+fun speedLabel(speed: Float): String =
+    (if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString().replace('.', ',')) + "×"
+
+/** Opciones de sonido: ecualizador, velocidad, saltar silencios y reanudar al conectar audífonos. */
+@Composable
+private fun PlaybackSection(
+    settings: AppSettings,
+    onSkipSilence: (Boolean) -> Unit,
+    onResumeOnConnect: (Boolean) -> Unit,
+    onSpeed: (Float) -> Unit,
+    onEqualizer: (() -> Unit)?,
+) {
+    var choosingSpeed by remember { mutableStateOf(false) }
+
+    SwitchRow(
+        title = "Saltar silencios",
+        detail = "Se salta los silencios largos dentro de las canciones.",
+        checked = settings.skipSilence,
+        onChange = onSkipSilence,
+    )
+    SwitchRow(
+        title = "Reanudar al conectar audífonos",
+        detail = "Sigue la música al conectar audífonos o un equipo Bluetooth.",
+        checked = settings.resumeOnConnect,
+        onChange = onResumeOnConnect,
+    )
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(
+            Modifier
+                .weight(1f)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { choosingSpeed = true }
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Velocidad: ${speedLabel(settings.speed)}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+        if (onEqualizer != null) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(onClick = onEqualizer)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Ecualizador", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+    if (onEqualizer == null) {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Este celular no trae un ecualizador que la app pueda abrir.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    if (choosingSpeed) {
+        ChoiceDialog(
+            title = "Velocidad",
+            options = listOf(0.75f, 1f, 1.25f, 1.5f, 2f).map { value -> speedLabel(value) to { onSpeed(value) } },
+            selected = speedLabel(settings.speed),
+            onDismiss = { choosingSpeed = false },
         )
     }
 }

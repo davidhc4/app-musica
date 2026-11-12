@@ -21,6 +21,9 @@ interface PlaybackEngine {
 
     /** Velocidad de reproducción: 1 es la normal. */
     fun setSpeed(speed: Float) {}
+
+    /** Si está activo, se saltan los silencios largos dentro de la canción. */
+    fun setSkipSilence(enabled: Boolean) {}
     fun positionMs(): Long
     fun durationMs(): Long
     fun release()

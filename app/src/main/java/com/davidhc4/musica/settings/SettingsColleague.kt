@@ -22,6 +22,9 @@ class SettingsColleague(private val store: SettingsStore) : BaseColleague() {
         val updated = when (event) {
             is AppEvent.SetThemeMode -> current.copy(mode = event.mode)
             is AppEvent.SetLibrarySort -> current.copy(librarySort = event.sort)
+            is AppEvent.SetSkipSilence -> current.copy(skipSilence = event.enabled)
+            is AppEvent.SetResumeOnConnect -> current.copy(resumeOnConnect = event.enabled)
+            is AppEvent.SetSpeed -> current.copy(speed = event.speed.coerceIn(0.5f, 2f))
             is AppEvent.SetDownloadLimit -> current.copy(downloadLimitMb = event.megabytes.coerceAtLeast(0))
             else -> return
         }

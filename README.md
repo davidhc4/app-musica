@@ -22,6 +22,8 @@ Ya puedes:
 - Buscar música libre en línea y descargarla desde la misma lista
 - Poner un límite de espacio a las descargas, ver cuánto ocupan y borrarlas todas desde Ajustes
 - Reordenar la cola y las canciones de tus listas con flechas de subir y bajar
+- Saltar silencios, reanudar al conectar audífonos y recordar la velocidad, en Ajustes → Reproducción y audio
+- Desde el menú de una canción: ver su artista o álbum, compartirla, ver detalles y usarla como tono de llamada
 - Elegir tema oscuro, claro o automático (sigue al celular)
 - Actualizar la app desde la propia app: al abrirla avisa si hay una versión nueva, la descarga y la instala encima, sin desinstalar ni perder la biblioteca (también en Ajustes → Actualizaciones)
 

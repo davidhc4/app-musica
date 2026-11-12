@@ -49,6 +49,23 @@ class SettingsColleagueTest {
     }
 
     @Test
+    fun `guarda las opciones de reproduccion`() = runTest {
+        val store = FakeSettingsStore()
+        val settings = SettingsColleague(store)
+        val mediator = EventMediator(mediatorScope(), listOf(settings))
+
+        mediator.post(AppEvent.SetSkipSilence(true))
+        mediator.post(AppEvent.SetResumeOnConnect(true))
+        mediator.post(AppEvent.SetSpeed(1.5f))
+        mediator.post(AppEvent.SetSpeed(9f))
+        advanceUntilIdle()
+
+        assertEquals(true, store.stored.skipSilence)
+        assertEquals(true, store.stored.resumeOnConnect)
+        assertEquals(2f, store.stored.speed)
+    }
+
+    @Test
     fun `repetir el mismo tema no escribe de nuevo`() = runTest {
         val store = FakeSettingsStore()
         val settings = SettingsColleague(store)
